@@ -79,4 +79,12 @@ flutter {
 dependencies {
     // Desugared JDK libs for core library desugaring (see compileOptions above)
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // home_widget asks for glance-appwidget:1.+ which resolves to
+    // 1.3.0-alpha02 (needs compileSdk 37). Pin to the latest stable 1.x
+    // that builds against SDK 36; the plugin only uses stable APIs.
+    constraints {
+        implementation("androidx.glance:glance-appwidget:1.1.1") {
+            because("newer versions require compileSdk 37")
+        }
+    }
 }
