@@ -1,8 +1,8 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -147,12 +147,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Container(
                     width: 30,
                     height: 30,
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white,
+                      color: Theme.of(context).brightness ==
+                              Brightness.dark
+                          ? const Color(0xFF1A2C44)
+                          : Colors.white,
+                      border: Border.all(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.3)),
                     ),
                     child: const Icon(Icons.camera_alt_rounded,
-                        size: 16, color: AppColors.primaryDark),
+                        size: 16, color: AppColors.primary),
                   ),
                 ),
               ],
@@ -414,89 +420,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Local Liquid Glass bottom sheet helper. Kept local to this file so it
-  /// can't clash with a shared helper a teammate will add later.
-  Future<T?> _showGlassSheet<T>({required Widget child}) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      enableDrag: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.35),
-      builder: (ctx) {
-        final cs = Theme.of(ctx).colorScheme;
-        final dark = Theme.of(ctx).brightness == Brightness.dark;
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: AnimatedPadding(
-            padding: MediaQuery.of(ctx).viewInsets,
-            duration: const Duration(milliseconds: 150),
-            child: Container(
-              constraints: BoxConstraints(
-                maxHeight:
-                    MediaQuery.of(ctx).size.height * 0.85,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    cs.surface.withValues(alpha: 0.94),
-                    cs.surfaceContainerHighest
-                        .withValues(alpha: 0.82),
-                  ],
-                ),
-                borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28)),
-                border: Border(
-                  top: BorderSide(
-                      color: Colors.white
-                          .withValues(alpha: dark ? 0.16 : 0.55),
-                      width: 1.2),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.28),
-                    blurRadius: 32,
-                    offset: const Offset(0, -10),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // drag handle
-                    Padding(
-                      padding: const EdgeInsets.only(
-                          top: 10, bottom: 2),
-                      child: Container(
-                        width: 44,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: cs.onSurfaceVariant
-                              .withValues(alpha: 0.4),
-                          borderRadius:
-                              BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                    Flexible(
-                      child:
-                          SingleChildScrollView(child: child),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   /// Add / edit form for one term's GPAs (Liquid Glass bottom sheet).
   Future<void> _termGpaSheet(
       {int year = 1, int term = 1, TermGpa? existing}) async {
@@ -506,24 +429,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         text: existing?.termGpa != null ? '${existing!.termGpa}' : '');
     final cumC = TextEditingController(
         text: existing?.cumGpa != null ? '${existing!.cumGpa}' : '');
-    final ok = await _showGlassSheet<bool>(
-      child: StatefulBuilder(
-        builder: (ctx, setSheet) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Text(
-                    existing == null
-                        ? t('addTerm')
-                        : t('editTerm'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 17)),
-              ),
-              const SizedBox(height: 14),
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setSheet) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
               Row(
                 children: [
                   Expanded(
@@ -619,7 +531,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
-      ),
+      title: existing == null ? t('addTerm') : t('editTerm'),
     );
     if (ok != true) return;
     double? tg, cg;
@@ -627,12 +539,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final tgRaw = termC.text.trim();
     if (tgRaw.isNotEmpty) {
       tg = double.tryParse(tgRaw);
-      if (tg == null || tg < 0 || tg > 5) bad = true;
+      if (tg == null || tg < 0 || tg > 4) bad = true;
     }
     final cgRaw = cumC.text.trim();
     if (cgRaw.isNotEmpty) {
       cg = double.tryParse(cgRaw);
-      if (cg == null || cg < 0 || cg > 5) bad = true;
+      if (cg == null || cg < 0 || cg > 4) bad = true;
     }
     if (bad) {
       if (mounted) showSnack(context, t('invalidGpa'), error: true);

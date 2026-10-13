@@ -29,6 +29,35 @@ double _pctToGpa(double pct) {
   return 0.0;
 }
 
+/// Total GPA from raw grade records. Each subject contributes ONCE: its
+/// assessments are averaged first, then weighted by the subject's credit
+/// hours. (Naively weighting every assessment by the full hours over-counts
+/// subjects with many assessments.)
+double totalGpaFromRecords(
+    List<({String subjectId, double pct, double ch})> records) {
+  final pcts = <String, List<double>>{};
+  final hours = <String, double>{};
+  for (final r in records) {
+    pcts.putIfAbsent(r.subjectId, () => []).add(r.pct.clamp(0, 100));
+    hours[r.subjectId] = r.ch;
+  }
+  return gpaFromPercents([
+    for (final e in pcts.entries)
+      (
+        pct: e.value.reduce((a, b) => a + b) / e.value.length,
+        ch: (hours[e.key] ?? 0) > 0 ? hours[e.key]! : 0,
+      ),
+  ]);
+}
+
+/// GPA for a single subject from its assessment percentages (equal weight
+/// per assessment, converted once on the 4.0 scale).
+double subjectGpaFromPercents(List<double> pcts, double creditHours) {
+  if (pcts.isEmpty) return 0;
+  final avg = pcts.reduce((a, b) => a + b) / pcts.length;
+  return gpaFromPercents([(pct: avg.clamp(0, 100), ch: creditHours)]);
+}
+
 /// Attendance percentage from present/total counts.
 double attendancePct(int present, int total) =>
     total <= 0 ? 0 : (present / total) * 100;

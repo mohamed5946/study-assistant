@@ -336,7 +336,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                               ))
                           .toList();
                       if (endMin <= startMin) {
-                        showSnack(ctx, t('invalidNumber'), error: true);
+                        showSnack(ctx, t('endAfterStart'), error: true);
                         return;
                       }
                       if (hasOverlap(existing, weekday, startMin, endMin,

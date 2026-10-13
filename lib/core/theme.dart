@@ -113,6 +113,31 @@ ThemeData buildTheme(Brightness b) {
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
+    // System pickers (showTimePicker/showDatePicker) in brand colors.
+    timePickerTheme: TimePickerThemeData(
+      backgroundColor: dark ? const Color(0xFF1A2C44) : Colors.white,
+      hourMinuteColor: AppColors.primary.withValues(alpha: 0.12),
+      hourMinuteTextColor:
+          dark ? AppColors.darkText : AppColors.lightText,
+      dialBackgroundColor: dark
+          ? const Color(0xFF132033)
+          : const Color(0xFFEAF3FF),
+      dialHandColor: AppColors.primary,
+      dialTextColor: dark ? AppColors.darkText : AppColors.lightText,
+      entryModeIconColor: AppColors.primary,
+      dayPeriodColor: AppColors.primary.withValues(alpha: 0.12),
+      dayPeriodTextColor:
+          dark ? AppColors.darkText : AppColors.lightText,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28)),
+    ),
+    datePickerTheme: DatePickerThemeData(
+      backgroundColor: dark ? const Color(0xFF1A2C44) : Colors.white,
+      headerBackgroundColor: AppColors.primary,
+      headerForegroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28)),
+    ),
   );
 }
 
@@ -314,51 +339,59 @@ class _StudyLoadingBarState extends State<StudyLoadingBar>
         animation: _c,
         builder: (_, __) {
           final p = _c.value;
-          return SizedBox(
-            height: 34,
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: p,
-                  child: Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.violet]),
-                      borderRadius: BorderRadius.circular(8),
+          // Travel distance derived from the real track width so the icon
+          // never rides past the end (it used to assume a 200px track).
+          return LayoutBuilder(
+            builder: (ctx, cons) {
+              final track = cons.maxWidth.isFinite ? cons.maxWidth : 200.0;
+              const icon = 34.0;
+              return SizedBox(
+                height: 34,
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                ),
-                Positioned(
-                  left: p * 200,
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primary, AppColors.secondary]),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primary.withValues(alpha: 0.4),
-                          blurRadius: 10,
+                    FractionallySizedBox(
+                      widthFactor: p,
+                      child: Container(
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.violet]),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ],
+                      ),
                     ),
-                    child: const Icon(Icons.menu_book_rounded,
-                        color: Colors.white, size: 18),
-                  ),
+                    Positioned(
+                      left: p * (track - icon),
+                      child: Container(
+                        width: icon,
+                        height: icon,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.secondary]),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.4),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.menu_book_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           );
         },
       ),

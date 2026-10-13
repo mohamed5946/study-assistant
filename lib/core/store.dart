@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:hive_flutter/hive_flutter.dart';
 export 'package:hive_flutter/hive_flutter.dart';
 import 'models.dart';
+import 'notify.dart';
 
 /// Central access to all Hive boxes.
 class DB {
@@ -67,29 +70,19 @@ class Settings {
       DB.kv.get('theme', defaultValue: 'system') as String;
   static set theme(String v) => DB.kv.put('theme', v);
 
-  static String get aiProvider =>
-      DB.kv.get('aiProvider', defaultValue: 'gemini') as String;
-  static set aiProvider(String v) => DB.kv.put('aiProvider', v);
-
+  /// Bundled Groq config — the single source of AI settings. There is no
+  /// provider/key UI anywhere in the app; main.dart applies these from the
+  /// build-time --dart-define on every launch.
   static String get aiKey => DB.kv.get('aiKey', defaultValue: '') as String;
   static set aiKey(String v) => DB.kv.put('aiKey', v);
 
-  static String get aiBaseUrl =>
-      DB.kv.get('aiBaseUrl', defaultValue: _defaultBaseUrl) as String;
+  static String get aiBaseUrl => DB.kv.get('aiBaseUrl',
+      defaultValue: 'https://api.groq.com/openai/v1') as String;
   static set aiBaseUrl(String v) => DB.kv.put('aiBaseUrl', v);
 
-  static String get aiModel =>
-      DB.kv.get('aiModel', defaultValue: _defaultModel) as String;
+  static String get aiModel => DB.kv.get('aiModel',
+      defaultValue: 'openai/gpt-oss-20b') as String;
   static set aiModel(String v) => DB.kv.put('aiModel', v);
-
-  /// Free Groq defaults are pre-filled when the OpenAI-compatible
-  /// provider is selected (no key is ever embedded — the user pastes his own).
-  static String get _defaultBaseUrl => aiProvider == 'openai'
-      ? 'https://api.groq.com/openai/v1'
-      : 'https://api.openai.com/v1';
-  static String get _defaultModel => aiProvider == 'openai'
-      ? 'openai/gpt-oss-20b'
-      : 'gemini-3.8-flash';
 
   static int get focusMin => DB.kv.get('focusMin', defaultValue: 25) as int;
   static set focusMin(int v) => DB.kv.put('focusMin', v);
@@ -124,4 +117,63 @@ class Settings {
   static String get profilePhoto =>
       DB.kv.get('profilePhoto', defaultValue: '') as String;
   static set profilePhoto(String v) => DB.kv.put('profilePhoto', v);
+
+  /// Deletes a subject and every record that references it (timetable
+  /// entries + their class reminders, deadlines + their reminders, PDF
+  /// documents + files, flashcards, exams + attempts, attendance, grades,
+  /// notes, pomodoro sessions). Prevents orphaned records that would show
+  /// broken "—" names elsewhere in the app.
+  static Future<void> deleteSubjectCascade(String sid) async {
+    Future<void> deleteWhere<T>(Box<T> box, bool Function(T) match) async {
+      final keys = box.keys
+          .where((k) => match(box.get(k) as T))
+          .toList();
+      for (final k in keys) {
+        await box.delete(k);
+      }
+    }
+
+    final classKeys = timetable.keys
+        .where((k) => (timetable.get(k) as TimetableEntry).subjectId == sid)
+        .toList();
+    for (final k in classKeys) {
+      final e = timetable.get(k) as TimetableEntry;
+      await Notify.cancel('class_${e.id}');
+      await timetable.delete(k);
+    }
+    final deadlineKeys = deadlines.keys
+        .where((k) => (deadlines.get(k) as Deadline).subjectId == sid)
+        .toList();
+    for (final k in deadlineKeys) {
+      final d = deadlines.get(k) as Deadline;
+      await Notify.cancel('deadline_${d.id}');
+      await deadlines.delete(k);
+    }
+    final docKeys = documents.keys
+        .where((k) => (documents.get(k) as StudyDocument).subjectId == sid)
+        .toList();
+    for (final k in docKeys) {
+      final doc = documents.get(k) as StudyDocument;
+      try {
+        await File(doc.path).delete();
+      } catch (_) {}
+      await documents.delete(k);
+    }
+    await deleteWhere<Flashcard>(
+        flashcards, (f) => f.subjectId == sid);
+    final examIds = exams.values
+        .where((e) => e.subjectId == sid)
+        .map((e) => e.id)
+        .toSet();
+    await deleteWhere<ExamAttempt>(
+        attempts, (a) => examIds.contains(a.examId));
+    await deleteWhere<Exam>(exams, (e) => e.subjectId == sid);
+    await deleteWhere<AttendanceRecord>(
+        attendance, (a) => a.subjectId == sid);
+    await deleteWhere<GradeRecord>(grades, (g) => g.subjectId == sid);
+    await deleteWhere<Note>(notes, (n) => n.subjectId == sid);
+    await deleteWhere<PomodoroSession>(
+        pomodoro, (p) => p.subjectId == sid);
+    await subjects.delete(sid);
+  }
 }

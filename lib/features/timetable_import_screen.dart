@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/ai.dart';
+import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/schedule_optimizer.dart';
@@ -134,10 +135,6 @@ class _TimetableImportScreenState extends State<TimetableImportScreen> {
     final provider = AiService.current();
     if (provider == null) {
       setState(() => _error = t('noApiKeyMsg'));
-      return;
-    }
-    if (provider is! GeminiProvider) {
-      setState(() => _error = t('pdfNeedsGemini'));
       return;
     }
     setState(() {
@@ -416,97 +413,93 @@ class _TimetableImportScreenState extends State<TimetableImportScreen> {
     String kind = s.kind;
     final groupC = TextEditingController(text: s.group);
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(t('editSession')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final ok = await showGlassDialog<bool>(
+      context,
+      title: t('editSession'),
+      content: StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+                controller: subjC,
+                decoration:
+                    InputDecoration(labelText: t('subjectNameCode'))),
+            TextField(
+                controller: codeC,
+                decoration: const InputDecoration(labelText: 'Code')),
+            const SizedBox(height: 8),
+            LabeledDropdown<int>(
+              label: t('day'),
+              value: day,
+              items: [
+                for (var w = 1; w <= 7; w++)
+                  DropdownMenuItem(value: w, child: Text(_dayName(w))),
+              ],
+              onChanged: (v) => setS(() => day = v ?? day),
+            ),
+            const SizedBox(height: 8),
+            Row(
               children: [
-                TextField(
-                    controller: subjC,
-                    decoration:
-                        InputDecoration(labelText: t('subjectNameCode'))),
-                TextField(
-                    controller: codeC,
-                    decoration: const InputDecoration(labelText: 'Code')),
-                const SizedBox(height: 8),
-                LabeledDropdown<int>(
-                  label: t('day'),
-                  value: day,
-                  items: [
-                    for (var w = 1; w <= 7; w++)
-                      DropdownMenuItem(value: w, child: Text(_dayName(w))),
-                  ],
-                  onChanged: (v) => setS(() => day = v ?? day),
+                Expanded(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.access_time_rounded),
+                    label: Text(
+                        '${t('from')} ${_fmt(start.hour * 60 + start.minute)}'),
+                    onPressed: () async {
+                      final p = await showTimePicker(
+                          context: ctx, initialTime: start);
+                      if (p != null) setS(() => start = p);
+                    },
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.access_time_rounded),
-                        label: Text('${t('from')} ${_fmt(start.hour * 60 + start.minute)}'),
-                        onPressed: () async {
-                          final p = await showTimePicker(
-                              context: ctx, initialTime: start);
-                          if (p != null) setS(() => start = p);
-                        },
-                      ),
-                    ),
-                    Expanded(
-                      child: TextButton.icon(
-                        icon: const Icon(Icons.access_time_rounded),
-                        label: Text('${t('to')} ${_fmt(end.hour * 60 + end.minute)}'),
-                        onPressed: () async {
-                          final p = await showTimePicker(
-                              context: ctx, initialTime: end);
-                          if (p != null) setS(() => end = p);
-                        },
-                      ),
-                    ),
-                  ],
+                Expanded(
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.access_time_rounded),
+                    label: Text(
+                        '${t('to')} ${_fmt(end.hour * 60 + end.minute)}'),
+                    onPressed: () async {
+                      final p = await showTimePicker(
+                          context: ctx, initialTime: end);
+                      if (p != null) setS(() => end = p);
+                    },
+                  ),
                 ),
-                LabeledDropdown<String>(
-                  label: t('sessionType'),
-                  value: kind,
-                  items: [
-                    DropdownMenuItem(
-                        value: 'lecture', child: Text(t('lecture'))),
-                    DropdownMenuItem(
-                        value: 'section', child: Text(t('section'))),
-                  ],
-                  onChanged: (v) => setS(() => kind = v ?? kind),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                    controller: groupC,
-                    decoration:
-                        InputDecoration(labelText: '${t('group')} (${t('optional')})')),
-                TextField(
-                    controller: placeC,
-                    decoration: InputDecoration(labelText: t('place'))),
-                TextField(
-                    controller: instC,
-                    decoration:
-                        InputDecoration(labelText: t('instructor'))),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('save'))),
+            LabeledDropdown<String>(
+              label: t('sessionType'),
+              value: kind,
+              items: [
+                DropdownMenuItem(
+                    value: 'lecture', child: Text(t('lecture'))),
+                DropdownMenuItem(
+                    value: 'section', child: Text(t('section'))),
+              ],
+              onChanged: (v) => setS(() => kind = v ?? kind),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+                controller: groupC,
+                decoration: InputDecoration(
+                    labelText: '${t('group')} (${t('optional')})')),
+            TextField(
+                controller: placeC,
+                decoration: InputDecoration(labelText: t('place'))),
+            TextField(
+                controller: instC,
+                decoration:
+                    InputDecoration(labelText: t('instructor'))),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t('cancel'))),
+        FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t('save'))),
+      ],
     );
     if (ok != true) return;
     final idx = _sessions.indexOf(s);

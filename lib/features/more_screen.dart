@@ -70,7 +70,7 @@ class _MoreScreenState extends State<MoreScreen> {
       _Item(t('attendance'), Icons.fact_check_rounded, 'attendance',
           const [AppColors.success, AppColors.secondary]),
       _Item(t('gpa'), Icons.grade_rounded, 'gpa',
-          const [Color(0xFFFF8A5C), AppColors.warning]),
+          const [AppColors.secondary, AppColors.primaryDark]),
       _Item(t('myNotes'), Icons.note_alt_rounded, 'notes',
           const [AppColors.violet, AppColors.secondary]),
       _Item(t('pomodoro'), Icons.timer_rounded, 'pomodoro',

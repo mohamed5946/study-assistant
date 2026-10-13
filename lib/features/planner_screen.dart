@@ -3,6 +3,7 @@ import '../core/ai.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
+import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
@@ -103,7 +104,9 @@ class _PlannerScreenState extends State<PlannerScreen> {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white.withValues(alpha: 0.10)
+                : Colors.white,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -111,7 +114,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
                   blurRadius: 10)
             ],
           ),
-          child: Icon(icon, color: AppColors.primaryDark),
+          child: Icon(
+              icon,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : AppColors.primaryDark),
         ),
       ),
     );
@@ -209,12 +216,6 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 Text('$pending',
                     style: const TextStyle(
                         fontWeight: FontWeight.w800, fontSize: 28)),
-                Text(t('pendingTasks'),
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        fontSize: 12)),
               ],
             ),
           ),
@@ -229,12 +230,14 @@ class _PlannerScreenState extends State<PlannerScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(children: [
-                  Icon(Icons.timer_rounded, size: 18, color: Colors.white),
-                  SizedBox(width: 6),
-                  Text('Total',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, color: Colors.white)),
+                Row(children: [
+                  const Icon(Icons.timer_rounded,
+                      size: 18, color: Colors.white),
+                  const SizedBox(width: 6),
+                  Text(t('total'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
                 ]),
                 const SizedBox(height: 8),
                 Text.rich(
@@ -244,10 +247,10 @@ class _PlannerScreenState extends State<PlannerScreen> {
                         fontWeight: FontWeight.w800,
                         fontSize: 28,
                         color: Colors.white),
-                    children: const [
+                    children: [
                       TextSpan(
-                          text: ' min',
-                          style: TextStyle(
+                          text: ' ${t('minutesShort')}',
+                          style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: Colors.white)),
@@ -441,34 +444,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   void _showFullPlan() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.8,
-        builder: (_, ctrl) => Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(t('aiRecommendedPlan'),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 18)),
-              const SizedBox(height: 12),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: ctrl,
-                  child: SelectableText(_aiPlan ?? '',
-                      style: const TextStyle(fontSize: 15, height: 1.8)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    showGlassSheet(
+      context,
+      SelectableText(_aiPlan ?? '',
+          style: const TextStyle(fontSize: 15, height: 1.8)),
+      title: t('aiRecommendedPlan'),
     );
   }
 
@@ -743,6 +723,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
     if (d != null) {
       d.done = !d.done;
       await DB.deadlines.put(d.id, d);
+      if (d.done) await Notify.cancel('deadline_${d.id}');
     }
   }
 }

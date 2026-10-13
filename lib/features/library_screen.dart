@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import '../core/ai.dart';
+import '../core/glass_dialog.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
@@ -177,21 +178,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     final subjects = DB.subjects.values.toList();
     if (subjects.isNotEmpty && _filter.isEmpty) {
       if (!mounted) return;
-      subjectId = await showDialog<String>(
-            context: context,
-            builder: (_) => SimpleDialog(
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              title: Text(t('selectSubject')),
+      subjectId = await showGlassDialog<String>(
+            context,
+            title: t('selectSubject'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 for (final s in subjects)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(context, s.id),
-                    child: Text(s.name),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, s.id),
+                        child: Text(s.name),
+                      ),
+                    ),
                   ),
-                SimpleDialogOption(
-                  onPressed: () => Navigator.pop(context, ''),
-                  child: Text('— ${t('all')} —'),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context, ''),
+                    child: Text('— ${t('all')} —'),
+                  ),
                 ),
               ],
             ),
@@ -296,10 +305,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       if (mounted) showSnack(context, t('noApiKeyMsg'), error: true);
       return;
     }
-    if (provider is! GeminiProvider) {
-      if (mounted) showSnack(context, t('pdfNeedsGemini'), error: true);
-      return;
-    }
     int count = 10;
     String difficulty = 'mixed';
     if (kind == 'questions') {
@@ -391,10 +396,6 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     final provider = AiService.current();
     if (provider == null) {
       if (mounted) showSnack(context, t('noApiKeyMsg'), error: true);
-      return;
-    }
-    if (provider is! GeminiProvider) {
-      if (mounted) showSnack(context, t('pdfNeedsGemini'), error: true);
       return;
     }
     setState(() => _busy = true);
@@ -504,80 +505,73 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       showSnack(context, t('sendFailed'), error: true);
       return;
     }
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text('${qs.length} ✓',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 18)),
-              const SizedBox(height: 12),
-              GlassButton(
-                label: t('saveAsExam'),
-                icon: Icons.quiz_rounded,
-                onPressed: () async {
-                  final id = newId();
-                  await DB.exams.put(
-                    id,
-                    Exam(
-                      id: id,
-                      title: widget.doc.name,
-                      subjectId: widget.doc.subjectId,
-                      documentId: widget.doc.id,
-                      durationMin: qs.length,
-                      questionsJson: jsonEncode(
-                          qs.map((q) => q.toJson()).toList()),
-                      createdMs:
-                          DateTime.now().millisecondsSinceEpoch,
-                    ),
-                  );
-                  if (mounted) {
-                    Navigator.pop(context);
-                    showSnack(context, '✅');
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              GlassButton(
-                label: t('saveAsFlashcards'),
-                icon: Icons.style_rounded,
-                secondary: true,
-                onPressed: () async {
-                  final now = DateTime.now().millisecondsSinceEpoch;
-                  for (final q in qs) {
-                    final id = newId();
-                    await DB.flashcards.put(
-                      id,
-                      Flashcard(
-                        id: id,
-                        subjectId: widget.doc.subjectId,
-                        documentId: widget.doc.id,
-                        front: q.q,
-                        back: q.answer.isNotEmpty
-                            ? q.answer
-                            : q.explanation,
-                        nextReviewMs: now,
-                      ),
-                    );
-                  }
-                  if (mounted) {
-                    Navigator.pop(context);
-                    showSnack(context, '✅');
-                  }
-                },
-              ),
-            ],
+    showGlassSheet(
+      context,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('${qs.length} ✓',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800, fontSize: 18)),
+          const SizedBox(height: 12),
+          GlassButton(
+            label: t('saveAsExam'),
+            icon: Icons.quiz_rounded,
+            onPressed: () async {
+              final id = newId();
+              await DB.exams.put(
+                id,
+                Exam(
+                  id: id,
+                  title: widget.doc.name,
+                  subjectId: widget.doc.subjectId,
+                  documentId: widget.doc.id,
+                  durationMin: qs.length,
+                  questionsJson:
+                      jsonEncode(qs.map((q) => q.toJson()).toList()),
+                  createdMs: DateTime.now().millisecondsSinceEpoch,
+                ),
+              );
+              if (mounted) {
+                Navigator.pop(context);
+                showSnack(context, '✅');
+              }
+            },
           ),
-        ),
+          const SizedBox(height: 10),
+          GlassButton(
+            label: t('saveAsFlashcards'),
+            icon: Icons.style_rounded,
+            secondary: true,
+            onPressed: () async {
+              final now = DateTime.now().millisecondsSinceEpoch;
+              for (final q in qs) {
+                final id = newId();
+                await DB.flashcards.put(
+                  id,
+                  Flashcard(
+                    id: id,
+                    subjectId: widget.doc.subjectId,
+                    documentId: widget.doc.id,
+                    front: q.q,
+                    back: q.answer.isNotEmpty
+                        ? q.answer
+                        : q.explanation,
+                    nextReviewMs: now,
+                  ),
+                );
+              }
+              if (mounted) {
+                Navigator.pop(context);
+                showSnack(context, '✅');
+              }
+            },
+          ),
+        ],
       ),
+      title: t('genQuestions'),
     );
   }
 }

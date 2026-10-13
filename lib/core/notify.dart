@@ -2,7 +2,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
-import 'l10n.dart';
 
 class Notify {
   static final _plugin = FlutterLocalNotificationsPlugin();
@@ -43,7 +42,18 @@ class Notify {
     return notif;
   }
 
-  static int _idFor(String key) => key.hashCode & 0x7fffffff;
+  /// Stable 31-bit id for a key. String.hashCode is NOT stable across
+  /// VM launches, so a persisted FNV-1a hash is used instead — otherwise
+  /// cancel(key) would miss reminders scheduled before a restart and
+  /// re-scheduling would pile up duplicates.
+  static int idFor(String key) {
+    var h = 0x811c9dc5;
+    for (final c in key.codeUnits) {
+      h ^= c;
+      h = (h * 0x01000193) & 0xffffffff;
+    }
+    return h & 0x7fffffff;
+  }
 
   /// Schedules a weekly class reminder. [weekday]: 1=Mon..7=Sun.
   static Future<void> scheduleClass({
@@ -56,16 +66,18 @@ class Notify {
   }) async {
     if (!_ready) return;
     await cancel(key);
+    // A reminder can't fire before midnight of the class day: clamp.
+    final before = minutesBefore.clamp(0, classStartMin);
     final now = tz.TZDateTime.now(tz.local);
     var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day,
             classStartMin ~/ 60, classStartMin % 60)
-        .subtract(Duration(minutes: minutesBefore));
+        .subtract(Duration(minutes: before));
     while (scheduled.weekday != weekday || scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
     try {
       await _plugin.zonedSchedule(
-        _idFor(key),
+        idFor(key),
         title,
         body,
         scheduled,
@@ -82,7 +94,7 @@ class Notify {
     } catch (_) {
       // Fallback without exact alarms.
       await _plugin.zonedSchedule(
-        _idFor(key),
+        idFor(key),
         title,
         body,
         scheduled,
@@ -111,7 +123,7 @@ class Notify {
     if (when.isBefore(tz.TZDateTime.now(tz.local))) return;
     try {
       await _plugin.zonedSchedule(
-        _idFor(key),
+        idFor(key),
         title,
         body,
         when,
@@ -126,7 +138,7 @@ class Notify {
       );
     } catch (_) {
       await _plugin.zonedSchedule(
-        _idFor(key),
+        idFor(key),
         title,
         body,
         when,
@@ -144,8 +156,6 @@ class Notify {
 
   static Future<void> cancel(String key) async {
     if (!_ready) return;
-    await _plugin.cancel(_idFor(key));
+    await _plugin.cancel(idFor(key));
   }
-
-  static String channelName() => t('notificationChannel');
 }

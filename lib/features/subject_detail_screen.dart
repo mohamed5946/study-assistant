@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
+import '../core/glass_sheet.dart';
 import '../core/models.dart';
+import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
@@ -266,42 +268,29 @@ class SubjectDetailScreen extends StatelessWidget {
 
   Future<void> _pdfListSheet(BuildContext context, Subject s,
       List<StudyDocument> pdfs) async {
-    await showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(t('subjectPdfs'),
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 16)),
+    await showGlassSheet(
+      context,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final d in pdfs)
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_rounded,
+                  color: AppColors.error),
+              title: Text(d.name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => PdfViewerScreen(doc: d)),
+                );
+              },
             ),
-            for (final d in pdfs)
-              ListTile(
-                leading: const Icon(Icons.picture_as_pdf_rounded,
-                    color: AppColors.error),
-                title: Text(d.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) =>
-                            PdfViewerScreen(doc: d)),
-                  );
-                },
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
+        ],
       ),
+      title: t('subjectPdfs'),
     );
   }
 
@@ -374,6 +363,7 @@ class SubjectDetailScreen extends StatelessWidget {
                     onPressed: () async {
                       d.done = true;
                       await DB.deadlines.put(d.id, d);
+                      await Notify.cancel('deadline_${d.id}');
                     },
                   ),
                 ],
@@ -448,19 +438,10 @@ class SubjectDetailScreen extends StatelessWidget {
 
   Widget _statTile(BuildContext context, IconData icon,
       String value, String label, Color color) {
-    return Container(
+    return GlassCard(
+      radius: 18,
       padding:
           const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 5)),
-        ],
-      ),
       child: Column(
         children: [
           Container(
@@ -541,22 +522,11 @@ class SubjectDetailScreen extends StatelessWidget {
 
   Widget _qa(BuildContext context, IconData icon, String label,
       Color color, VoidCallback onTap) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(18),
+    return GlassCard(
+      radius: 18,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 5)),
-          ],
-        ),
-        child: Row(
+      padding: const EdgeInsets.all(12),
+      child: Row(
           children: [
             Container(
               width: 42,
@@ -577,7 +547,6 @@ class SubjectDetailScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -590,61 +559,48 @@ class SubjectDetailScreen extends StatelessWidget {
       VoidCallback? onTap}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
+      child: GlassCard(
+        radius: 18,
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                  color:
-                      AppColors.primary.withValues(alpha: 0.07),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(icon, color: color),
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15)),
-                    Text(subtitle,
-                        style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant,
-                            fontSize: 12)),
-                  ],
-                ),
+              child: Icon(icon, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15)),
+                  Text(subtitle,
+                      style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                          fontSize: 12)),
+                ],
               ),
-              if (trailing != null)
-                trailing
-              else if (onTap != null)
-                Icon(Icons.chevron_right_rounded,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurfaceVariant),
-            ],
-          ),
+            ),
+            if (trailing != null)
+              trailing
+            else if (onTap != null)
+              Icon(Icons.chevron_right_rounded,
+                  color: Theme.of(context)
+                      .colorScheme
+                      .onSurfaceVariant),
+          ],
         ),
       ),
     );

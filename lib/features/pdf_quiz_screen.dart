@@ -44,13 +44,6 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
       });
       return;
     }
-    if (provider is! GeminiProvider) {
-      setState(() {
-        _loading = false;
-        _error = t('pdfNeedsGemini');
-      });
-      return;
-    }
     try {
       final bytes = await File(widget.doc.path).readAsBytes();
       final out = await provider.analyzePdf(

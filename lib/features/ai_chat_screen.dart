@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/ai.dart';
 import '../core/code_text.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/nav.dart';
@@ -60,7 +61,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => TabNav.go(0),
+          onPressed: () {
+            // When pushed (e.g. "ask about subject"), pop back; when tabbed,
+            // go to the home tab.
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              TabNav.go(0);
+            }
+          },
         ),
         title: Text(t('aiChat')),
         actions: [
@@ -86,51 +95,43 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Future<void> _menu() async {
-    await showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.psychology_rounded,
-                  color: AppColors.primary),
-              title: Text(Settings.hasAiKey
-                  ? '${t('aiProvider')}: ${Settings.aiProvider}'
-                  : t('noApiKey')),
-              subtitle:
-                  Settings.hasAiKey ? Text(Settings.aiModel) : null,
-            ),
-            ListTile(
-              leading: Icon(Icons.settings_rounded,
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant),
-              title: Text(t('openSettings')),
-              onTap: () {
-                Navigator.pop(context);
-                TabNav.go(4, more: 'settings');
-              },
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.delete_sweep_rounded, color: AppColors.error),
-              title: Text(t('clearChat'),
-                  style: const TextStyle(color: AppColors.error)),
-              onTap: () async {
-                Navigator.pop(context);
-                final confirmed = await confirmDelete(context,
-                    message: t('clearChat'));
-                if (confirmed) {
-                  await DB.chat.clear();
-                  if (mounted) showSnack(context, t('chatCleared'));
-                }
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
+    await showGlassSheet(
+      context,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.psychology_rounded,
+                color: AppColors.primary),
+            title: Text(t('aiStatus')),
+            subtitle: Text(t('aiReady')),
+          ),
+          ListTile(
+            leading: Icon(Icons.settings_rounded,
+                color:
+                    Theme.of(context).colorScheme.onSurfaceVariant),
+            title: Text(t('openSettings')),
+            onTap: () {
+              Navigator.pop(context);
+              TabNav.go(4, more: 'settings');
+            },
+          ),
+          ListTile(
+            leading:
+                const Icon(Icons.delete_sweep_rounded, color: AppColors.error),
+            title: Text(t('clearChat'),
+                style: const TextStyle(color: AppColors.error)),
+            onTap: () async {
+              Navigator.pop(context);
+              final confirmed = await confirmDelete(context,
+                  message: t('clearChat'));
+              if (confirmed) {
+                await DB.chat.clear();
+                if (mounted) showSnack(context, t('chatCleared'));
+              }
+            },
+          ),
+        ],
       ),
     );
   }
@@ -168,34 +169,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 18),
-            GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.key_rounded,
-                          color: AppColors.warning),
-                      const SizedBox(width: 8),
-                      Text(t('getFreeKey'),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(t('freeKeySteps'),
-                      style:
-                          const TextStyle(fontSize: 13, height: 1.7)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            GlassButton(
-              label: t('openSettings'),
-              icon: Icons.settings_rounded,
-              onPressed: () => TabNav.go(4, more: 'settings'),
-            ),
           ],
         ),
       ),
@@ -296,7 +269,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
         padding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withValues(alpha: 0.10)
+              : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
               color: AppColors.primary.withValues(alpha: 0.25)),
@@ -308,8 +283,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ],
         ),
         child: Text(label,
-            style: const TextStyle(
-                color: AppColors.primaryDark,
+            style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : AppColors.primaryDark,
                 fontWeight: FontWeight.w600,
                 fontSize: 13)),
       ),
@@ -447,8 +424,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
         dark ? AppColors.pink : AppColors.primaryDark; // readable in both
     return SafeArea(
       top: false,
+      // Reserve shell nav-bar space only when tabbed; when pushed there is
+      // no bottom nav and the dead space looks broken.
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+        padding: EdgeInsets.fromLTRB(
+            16, 4, 16, Navigator.canPop(context) ? 16 : 100),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -502,11 +482,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
             Row(
               children: [
                 Container(
-                  decoration: const BoxDecoration(
-                      shape: BoxShape.circle, color: Colors.white),
+                  decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Theme.of(context).brightness ==
+                              Brightness.dark
+                          ? Colors.white.withValues(alpha: 0.10)
+                          : Colors.white),
                   child: IconButton(
-                    icon: const Icon(Icons.add_rounded,
-                        color: AppColors.primaryDark),
+                    icon: Icon(Icons.add_rounded,
+                        color: Theme.of(context).brightness ==
+                                Brightness.dark
+                            ? Colors.white
+                            : AppColors.primaryDark),
                     tooltip: t('askAboutPdf'),
                     onPressed: () => Navigator.push(
                         context,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:cronet_http/cronet_http.dart';
 import 'package:http/http.dart' as http;
+import 'pdf_text.dart';
 import 'store.dart';
 
 /// Single shared HTTP client for ALL AI API calls.
@@ -38,7 +39,7 @@ class AiHttp {
       final engine = CronetEngine.build(
         cacheMode: CacheMode.memory,
         cacheMaxSize: 2 * 1024 * 1024,
-        userAgent: 'StudyAssistant/2.2',
+        userAgent: 'StudyAssistant/2.3',
       );
       return CronetClient.fromCronetEngine(engine, closeEngine: true);
     } catch (_) {
@@ -75,195 +76,73 @@ class AiException implements Exception {
   String toString() => message;
 }
 
-/// Google Gemini via AI Studio (free tier). Supports native PDF input.
-/// Verified working: model `gemini-3.8-flash`, auth via `X-goog-api-key` header.
-/// Free tier may return 503 under high demand -> retried with backoff.
-class GeminiProvider implements AiProvider {
-  final String apiKey;
-  final String model;
-  GeminiProvider({required this.apiKey, required this.model});
-
-  Uri _uri() => Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent');
-
-  Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'X-goog-api-key': apiKey,
-      };
-
-  static const _retryDelays = [
-    Duration(seconds: 2),
-    Duration(seconds: 5),
-    Duration(seconds: 10),
-  ];
-
-  Future<String> _post(Map<String, dynamic> body) async {
-    for (var attempt = 0; ; attempt++) {
-      http.Response res;
-      try {
-        // All AI traffic goes through the shared Cronet-backed client.
-        res = await (await AiHttp.client())
-            .post(_uri(), headers: _headers, body: jsonEncode(body))
-            .timeout(const Duration(seconds: 90));
-      } catch (e) {
-        throw AiException(_friendlyError(-1, ''));
-      }
-      if (res.statusCode == 200) return _parse(res.body);
-      if (res.statusCode == 503 && attempt < _retryDelays.length) {
-        await Future.delayed(_retryDelays[attempt]);
-        continue;
-      }
-      throw AiException(_friendlyError(res.statusCode, res.body));
-    }
-  }
-
-  String _parse(String body) {
-    final data = jsonDecode(body) as Map<String, dynamic>;
-    final cands = data['candidates'] as List?;
-    if (cands == null || cands.isEmpty) {
-      throw AiException(_friendlyError(-2, ''));
-    }
-    final parts = (cands[0]['content']?['parts'] as List?) ?? const [];
-    final text = parts.map((p) => '${p['text'] ?? ''}').join('\n').trim();
-    if (text.isEmpty) throw AiException(_friendlyError(-2, ''));
-    return text;
-  }
-
-  String _friendlyError(int code, String body) {
-    final ar = Settings.lang == 'ar';
-    if (code == 503) {
-      return ar
-          ? 'الخدمة مشغولة دلوقتي، حاول تاني بعد شوية 🔄'
-          : 'The service is busy right now, please try again shortly 🔄';
-    }
-    if (code == -1) {
-      return ar
-          ? 'مفيش اتصال بالإنترنت. اتأكد من النت وحاول تاني.'
-          : 'No internet connection. Check and retry.';
-    }
-    if (code == -2) {
-      return ar
-          ? 'الـ AI مرجعش إجابة. حاول تاني.'
-          : 'The AI returned no answer. Try again.';
-    }
-    String detail = '';
-    try {
-      detail = (jsonDecode(body) as Map)['error']?['message'] ?? '';
-    } catch (_) {}
-    if (code == 400 && detail.contains('API key')) {
-      return ar
-          ? 'مفتاح الـ API مش صحيح. اتأكد منه في الإعدادات.'
-          : 'Invalid API key. Check it in Settings.';
-    }
-    return 'Gemini $code: $detail';
-  }
-
-  @override
-  Future<String> chat(List<AiMsg> history, {String? system}) async {
-    final contents = <Map<String, dynamic>>[];
-    if (system != null && system.isNotEmpty) {
-      contents.add({
-        'role': 'user',
-        'parts': [
-          {'text': 'System instruction: $system'}
-        ]
-      });
-    }
-    for (final m in history) {
-      contents.add({
-        'role': m.role == 'assistant' ? 'model' : 'user',
-        'parts': [
-          {'text': m.text}
-        ]
-      });
-    }
-    return _post({'contents': contents});
-  }
-
-  @override
-  Future<String> analyzePdf({
-    required List<int> pdfBytes,
-    required String fileName,
-    required String prompt,
-  }) async {
-    return _post({
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': prompt},
-            {
-              'inlineData': {
-                'mimeType': 'application/pdf',
-                'data': base64Encode(pdfBytes),
-              }
-            },
-          ]
-        }
-      ]
-    });
-  }
-
-  /// Sends an image (photo of a question / timetable) to Gemini.
-  @override
-  Future<String> analyzeImage({
-    required List<int> bytes,
-    required String mimeType,
-    required String prompt,
-  }) async {
-    return _post({
-      'contents': [
-        {
-          'role': 'user',
-          'parts': [
-            {'text': prompt},
-            {
-              'inlineData': {
-                'mimeType': mimeType,
-                'data': base64Encode(bytes),
-              }
-            },
-          ]
-        }
-      ]
-    });
-  }
-}
-
-/// Any OpenAI-compatible chat completions endpoint.
+/// Groq via the OpenAI-compatible chat-completions API.
+///
+/// ALL AI features run on this provider — there is no Gemini dependency
+/// anywhere in the app anymore:
+/// - chat / planner / timetable extraction: text model (`openai/gpt-oss-20b`)
+/// - PDF analysis: the PDF's text is extracted ON-DEVICE ([PdfText]) and
+///   sent as text context (the model is text-only)
+/// - image analysis (scan question, timetable photos): Groq's vision model
+///   (`meta-llama/llama-4-scout-17b-16e-instruct`), same API shape
 class OpenAiCompatProvider implements AiProvider {
   final String apiKey, baseUrl, model;
-  OpenAiCompatProvider(
-      {required this.apiKey, required this.baseUrl, required this.model});
 
-  @override
-  Future<String> chat(List<AiMsg> history, {String? system}) async {
-    final msgs = <Map<String, String>>[];
-    if (system != null && system.isNotEmpty) {
-      msgs.add({'role': 'system', 'content': system});
-    }
-    for (final m in history) {
-      msgs.add({'role': m.role, 'content': m.text});
-    }
-    final url = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
-    // All AI traffic goes through the shared Cronet-backed client.
+  /// Vision-capable Groq model used for image inputs (text model is
+  /// text-only). Still Groq, still the bundled key — no user setting.
+  final String visionModel;
+
+  OpenAiCompatProvider({
+    required this.apiKey,
+    required this.baseUrl,
+    required this.model,
+    this.visionModel = 'meta-llama/llama-4-scout-17b-16e-instruct',
+  });
+
+  Uri _completionsUri() => Uri.parse(
+      '${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
+
+  /// Sends chat-completions messages through the shared Cronet client.
+  Future<String> _post(
+    List<Map<String, dynamic>> messages, {
+    String? model,
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
     final res = await (await AiHttp.client())
-        .post(url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $apiKey',
-            },
-            body: jsonEncode({'model': model, 'messages': msgs}))
-        .timeout(const Duration(seconds: 90));
+        .post(
+          _completionsUri(),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $apiKey',
+          },
+          body: jsonEncode({'model': model ?? this.model, 'messages': messages}),
+        )
+        .timeout(timeout);
     if (res.statusCode != 200) {
-      throw AiException('API ${res.statusCode}: ${res.body.length > 200 ? res.body.substring(0, 200) : res.body}');
+      final body = res.body;
+      throw AiException(
+          'API ${res.statusCode}: ${body.length > 200 ? body.substring(0, 200) : body}');
     }
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     final choices = data['choices'] as List?;
     if (choices == null || choices.isEmpty) {
       throw AiException('API: empty response');
     }
-    return '${choices[0]['message']?['content'] ?? ''}'.trim();
+    final text = '${choices[0]['message']?['content'] ?? ''}'.trim();
+    if (text.isEmpty) throw AiException('API: empty response');
+    return text;
+  }
+
+  @override
+  Future<String> chat(List<AiMsg> history, {String? system}) async {
+    final msgs = <Map<String, dynamic>>[];
+    if (system != null && system.isNotEmpty) {
+      msgs.add({'role': 'system', 'content': system});
+    }
+    for (final m in history) {
+      msgs.add({'role': m.role, 'content': m.text});
+    }
+    return _post(msgs);
   }
 
   @override
@@ -271,8 +150,29 @@ class OpenAiCompatProvider implements AiProvider {
     required List<int> pdfBytes,
     required String fileName,
     required String prompt,
-  }) {
-    throw AiException('PDF_ANALYSIS_NEEDS_GEMINI');
+  }) async {
+    final extracted = await PdfText.extract(pdfBytes);
+    if (extracted.text.trim().isEmpty) {
+      throw AiException(Settings.lang == 'ar'
+          ? 'تعذر استخراج نص من الـ PDF — ممكن يكون صفحات مصورة بدون نص. جرّب ملف تاني.'
+          : 'Could not extract text from the PDF — it may be scanned images without a text layer. Try another file.');
+    }
+    final buf = StringBuffer()
+      ..writeln('PDF file: $fileName (${extracted.pageCount} pages)')
+      ..writeln('--- BEGIN PDF TEXT ---')
+      ..writeln(extracted.text)
+      ..writeln('--- END PDF TEXT ---');
+    if (extracted.truncated) {
+      buf.writeln(
+          '[Note: only the first part of this long PDF was included. Answer from what is above.]');
+    }
+    return _post([
+      {'role': 'system', 'content': AiService.systemPrompt()},
+      {
+        'role': 'user',
+        'content': '$prompt\n\n${buf.toString()}',
+      },
+    ]);
   }
 
   @override
@@ -280,18 +180,33 @@ class OpenAiCompatProvider implements AiProvider {
     required List<int> bytes,
     required String mimeType,
     required String prompt,
-  }) {
-    throw AiException('IMAGE_ANALYSIS_NEEDS_GEMINI');
+  }) async {
+    final dataUrl = 'data:$mimeType;base64,${base64Encode(bytes)}';
+    return _post(
+      [
+        {'role': 'system', 'content': AiService.systemPrompt()},
+        {
+          'role': 'user',
+          'content': [
+            {'type': 'text', 'text': prompt},
+            {
+              'type': 'image_url',
+              'image_url': {'url': dataUrl},
+            },
+          ],
+        },
+      ],
+      model: visionModel,
+    );
   }
 }
 
 /// Builds the configured provider from on-device settings.
+/// Always the bundled Groq config (applied unconditionally at startup in
+/// main.dart) — there is no provider/key UI anywhere in the app.
 class AiService {
   static AiProvider? current() {
     if (!Settings.hasAiKey) return null;
-    if (Settings.aiProvider == 'gemini') {
-      return GeminiProvider(apiKey: Settings.aiKey, model: Settings.aiModel);
-    }
     return OpenAiCompatProvider(
       apiKey: Settings.aiKey,
       baseUrl: Settings.aiBaseUrl,
@@ -311,7 +226,7 @@ class AiService {
       {required int count, required String difficulty, required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Generate $count study questions ($difficulty difficulty) in $lang from the attached PDF.
+Generate $count study questions ($difficulty difficulty) in $lang from the PDF text below.
 Return ONLY a JSON array, no markdown fences, no extra text. Each item:
 {"q":"question text","type":"mcq"|"tf"|"short","options":["a","b","c","d"],"answer":"exact correct option text (or true/false for tf, or empty for short)","explanation":"brief why"}
 For tf type use options ["true","false"]. For short type use options [] and answer "".
@@ -322,7 +237,7 @@ If the PDF is about computer science/programming, the "explanation" may include 
   static String flashcardsPrompt({required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Create up to 20 flashcards from the attached PDF in $lang.
+Create up to 20 flashcards from the PDF text below in $lang.
 Return ONLY a JSON array, no markdown fences: [{"front":"question/prompt","back":"answer"}]
 ''';
   }
@@ -331,12 +246,12 @@ Return ONLY a JSON array, no markdown fences: [{"front":"question/prompt","back"
   static String extractPdfQuestionsPrompt({required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Find the actual questions written INSIDE the attached PDF (exam questions, exercises, quizzes — not generated ones).
+Find the actual questions written INSIDE the PDF text below (exam questions, exercises, quizzes — not generated ones). Page markers look like "===== Page 3 =====".
 Return ONLY a JSON array, no markdown fences, no extra text. Each item:
 {"q":"question text exactly as in the PDF","type":"mcq"|"tf"|"short","options":["choice1","choice2","choice3","choice4"],"answer":"exact correct option text","explanation":"brief reasoning why this is correct","page":12}
 Rules:
 - For mcq include all choices from the PDF. For tf use options ["true","false"]. For short use options [] and answer "".
-- "page" is the PDF page number where the question appears (integer). If unknown use 0.
+- "page" is the PDF page number from the nearest "===== Page N =====" marker above the question (integer). If unknown use 0.
 - Keep question text in its original language; write answer/explanation in $lang.
 - If the PDF has no clear questions, return [].
 ''';
@@ -346,17 +261,22 @@ Rules:
   static String askPdfPrompt(String question, {required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Answer this question from the attached PDF only, in $lang: "$question"
+Answer this question from the PDF text below only, in $lang: "$question"
 Rules:
 - Base your answer strictly on the PDF content. If the PDF doesn't contain the answer, say so honestly.
-- After each factual claim, cite the page like this: [p:12]
+- The PDF text has page markers like "===== Page 3 =====". After each factual claim, cite the page like this: [p:12]
 - End your answer with a "Sources:" line listing the cited pages.
 ''';
   }
 
   /// Solves a photographed textbook question step by step.
-  static String scanQuestionPrompt({required bool ar}) {
+  /// The photo itself is sent to the vision model; if OCR-style text was
+  /// extracted instead it is appended after the prompt.
+  static String scanQuestionPrompt({required bool ar, String? ocrText}) {
     final lang = ar ? 'Arabic' : 'English';
+    final extra = (ocrText != null && ocrText.trim().isNotEmpty)
+        ? '\n\nText read from the photo (may be imperfect):\n$ocrText'
+        : '';
     return '''
 Look at this photo. It shows a study question — it may also be a photo of CODE from a whiteboard or notebook (the user is a Computer Science student).
 
@@ -364,7 +284,7 @@ Look at this photo. It shows a study question — it may also be a photo of CODE
 2. If it is a question: solve it step by step in $lang.
 3. If it is CODE: explain what the code does in $lang, point out any bugs and show the fixed code inside ```code blocks```, then add a short complexity note (Big-O time/space).
 4. Keep code itself in English; explanations in $lang.
-If the photo is unreadable, say so and ask for a clearer photo.
+If the photo is unreadable, say so and ask for a clearer photo.$extra
 ''';
   }
 
@@ -372,7 +292,7 @@ If the photo is unreadable, say so and ask for a clearer photo.
   static String extractTimetablePrompt({required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Analyze this university timetable (PDF or image) and extract every class session.
+Analyze this university timetable and extract every class session. The timetable is given as PDF text below (or a photo).
 Return ONLY a JSON array, no markdown fences, no extra text. Each item:
 {"subject":"subject name","code":"course code (or empty)","day":"Mon"|"Tue"|"Wed"|"Thu"|"Fri"|"Sat"|"Sun","start":"HH:MM 24h","end":"HH:MM 24h","place":"location (or empty)","instructor":"instructor (or empty)","kind":"lecture"|"section","group":"section/group label like A, B, S1 (or empty if none)"}
 Rules:

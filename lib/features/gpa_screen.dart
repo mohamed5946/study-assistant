@@ -92,17 +92,22 @@ class _GpaScreenState extends State<GpaScreen>
 
   Widget _body(List<Subject> subjects) {
     final all = DB.grades.values.toList();
-    final total = gpaFromPercents([
+    // Each subject counts once: average its assessments, weight by hours.
+    final total = totalGpaFromRecords([
       for (final g in all)
         if (g.maxScore > 0)
-          (pct: (g.score / g.maxScore * 100).clamp(0, 100), ch: g.creditHours),
+          (
+            subjectId: g.subjectId,
+            pct: (g.score / g.maxScore * 100).clamp(0, 100),
+            ch: g.creditHours
+          ),
     ]);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
         GlassCard(
-          gradient: const [Color(0xFFFF8A5C), AppColors.warning],
+          gradient: const [AppColors.primary, AppColors.secondary],
           child: Column(
             children: [
               Text(t('totalGpa'),
@@ -112,8 +117,9 @@ class _GpaScreenState extends State<GpaScreen>
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: 46)),
-              const Text('4.0 scale',
-                  style: TextStyle(color: Colors.white70, fontSize: 12)),
+              Text(t('gpaScale'),
+                  style:
+                      const TextStyle(color: Colors.white70, fontSize: 12)),
             ],
           ),
         ),
@@ -147,11 +153,14 @@ class _GpaScreenState extends State<GpaScreen>
     final list = DB.grades.values
         .where((g) => g.subjectId == _subjectId)
         .toList();
-    final gpa = gpaFromPercents([
-      for (final g in list)
-        if (g.maxScore > 0)
-          (pct: (g.score / g.maxScore * 100).clamp(0, 100), ch: g.creditHours),
-    ]);
+    final gpa = subjectGpaFromPercents(
+      [
+        for (final g in list)
+          if (g.maxScore > 0)
+            (g.score / g.maxScore * 100).clamp(0, 100),
+      ],
+      list.isEmpty ? 3 : list.first.creditHours,
+    );
     final sName = DB.subjectName(_subjectId) ?? '';
     return GlassCard(
       child: Column(
@@ -289,7 +298,13 @@ class _GpaScreenState extends State<GpaScreen>
     if (ok != true) return;
     final score = double.tryParse(scoreC.text.trim());
     final max = double.tryParse(maxC.text.trim());
-    if (nameC.text.trim().isEmpty || score == null || max == null || max <= 0) {
+    final ch = double.tryParse(chC.text.trim());
+    if (nameC.text.trim().isEmpty ||
+        score == null ||
+        max == null ||
+        max <= 0 ||
+        ch == null ||
+        ch <= 0) {
       if (mounted) showSnack(context, t('invalidNumber'), error: true);
       return;
     }
@@ -302,7 +317,7 @@ class _GpaScreenState extends State<GpaScreen>
         name: nameC.text.trim(),
         score: score,
         maxScore: max,
-        creditHours: double.tryParse(chC.text.trim()) ?? 3,
+        creditHours: ch,
       ),
     );
   }
@@ -498,6 +513,40 @@ class _GoalPlannerTabState extends State<_GoalPlannerTab> {
                 color: Theme.of(context)
                     .colorScheme
                     .onSurfaceVariant)),
+      );
+    }
+    if (req <= 0) {
+      // Target already secured — even a 0.0 term keeps the goal.
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(colors: [
+            AppColors.success,
+            Color(0xFF1E9E6A),
+          ]),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.success.withValues(alpha: 0.35),
+                blurRadius: 18,
+                offset: const Offset(0, 8)),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.celebration_rounded,
+                color: Colors.white, size: 32),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(t('goalSecured'),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      height: 1.6)),
+            ),
+          ],
+        ),
       );
     }
     final prevGpa =

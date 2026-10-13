@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -198,48 +199,44 @@ class _FlashcardsScreenState extends State<FlashcardsScreen> {
     final frontC = TextEditingController(text: c?.front ?? '');
     final backC = TextEditingController(text: c?.back ?? '');
     String subjectId = c?.subjectId ?? _filter;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(c == null ? t('addCard') : t('edit')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              LabeledDropdown<String>(
-                value: subjectId.isEmpty ? null : subjectId,
-                items: [
-                  DropdownMenuItem(value: '', child: Text('—')),
-                  for (final s in DB.subjects.values)
-                    DropdownMenuItem(value: s.id, child: Text(s.name)),
-                ],
-                onChanged: (v) => setS(() => subjectId = v ?? ''),
-                label: t('subject'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                  controller: frontC,
-                  maxLines: 3,
-                  decoration: InputDecoration(labelText: t('front'))),
-              const SizedBox(height: 10),
-              TextField(
-                  controller: backC,
-                  maxLines: 3,
-                  decoration: InputDecoration(labelText: t('back'))),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('save'))),
+    final ok = await showGlassDialog<bool>(
+      context,
+      title: c == null ? t('addCard') : t('edit'),
+      content: StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            LabeledDropdown<String>(
+              value: subjectId.isEmpty ? null : subjectId,
+              items: [
+                DropdownMenuItem(value: '', child: Text('—')),
+                for (final s in DB.subjects.values)
+                  DropdownMenuItem(value: s.id, child: Text(s.name)),
+              ],
+              onChanged: (v) => setS(() => subjectId = v ?? ''),
+              label: t('subject'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+                controller: frontC,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: t('front'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: backC,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: t('back'))),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t('cancel'))),
+        FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t('save'))),
+      ],
     );
     if (ok != true) return;
     if (frontC.text.trim().isEmpty || backC.text.trim().isEmpty) {

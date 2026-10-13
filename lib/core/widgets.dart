@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'glass_dialog.dart';
 import 'l10n.dart';
 import 'theme.dart';
 
@@ -78,22 +79,26 @@ class EmptyState extends StatelessWidget {
 }
 
 Future<bool> confirmDelete(BuildContext context, {String? message}) async {
-  final r = await showDialog<bool>(
-    context: context,
-    builder: (_) => AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(t('confirmDelete')),
-      content: Text(message ?? t('confirmDeleteMsg')),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(context, false), child: Text(t('no'))),
-        FilledButton(
-          style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-          onPressed: () => Navigator.pop(context, true),
-          child: Text(t('yes')),
-        ),
-      ],
+  final r = await showGlassDialog<bool>(
+    context,
+    title: t('confirmDelete'),
+    content: Text(
+      message ?? t('confirmDeleteMsg'),
+      textAlign: TextAlign.center,
+      style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          height: 1.7),
     ),
+    actions: [
+      TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: Text(t('no'))),
+      FilledButton(
+        style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+        onPressed: () => Navigator.pop(context, true),
+        child: Text(t('yes')),
+      ),
+    ],
   );
   return r == true;
 }

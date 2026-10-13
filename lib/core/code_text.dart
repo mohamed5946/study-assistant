@@ -131,13 +131,18 @@ class _CodeCard extends StatelessWidget {
           const Divider(height: 1, color: Colors.white10),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: SelectableText.rich(
-              TextSpan(children: _highlight(code)),
-              style: const TextStyle(
-                  fontFamily: 'monospace',
-                  fontSize: 13,
-                  height: 1.6,
-                  color: Color(0xFFE2E8F0)),
+            // Code is always LTR: without this, the RTL bidi algorithm
+            // can reorder lines (especially with Arabic comments).
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: SelectableText.rich(
+                TextSpan(children: _highlight(code)),
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 13,
+                    height: 1.6,
+                    color: Color(0xFFE2E8F0)),
+              ),
             ),
           ),
         ],

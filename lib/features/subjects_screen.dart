@@ -4,6 +4,7 @@ import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
+import '../core/widget_service.dart';
 import '../core/widgets.dart';
 import 'subject_detail_screen.dart';
 
@@ -374,7 +375,8 @@ class SubjectsScreen extends StatelessWidget {
             onEdit: () => _edit(context, s),
             onDelete: () async {
               if (await confirmDelete(context)) {
-                await DB.subjects.delete(s.id);
+                await DB.deleteSubjectCascade(s.id);
+                await WidgetService.update();
               }
             },
           ),
@@ -499,7 +501,8 @@ class SubjectsScreen extends StatelessWidget {
       }
       return;
     }
-    final ch = double.tryParse(chC.text.trim()) ?? 3;
+    final chRaw = double.tryParse(chC.text.trim()) ?? 3;
+    final ch = chRaw > 0 ? chRaw : 3;
     if (s == null) {
       final id = newId();
       await DB.subjects.put(
@@ -515,5 +518,6 @@ class SubjectsScreen extends StatelessWidget {
       s.creditHours = ch;
       await DB.subjects.put(s.id, s);
     }
+    await WidgetService.update();
   }
 }

@@ -91,7 +91,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               : '$greet، ${Settings.profileName.trim()}',
                           style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 17)),
-                      Text(t('readyToStudy'),
+                      Text(_todayLabel(),
                           style: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
@@ -244,8 +244,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         width: 44,
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: dark
+              ? Colors.white.withValues(alpha: 0.10)
+              : Colors.white,
           shape: BoxShape.circle,
+          border: dark
+              ? Border.all(
+                  color: Colors.white.withValues(alpha: 0.18))
+              : null,
           boxShadow: [
             BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.12),
@@ -254,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         child: Icon(
             dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            color: AppColors.primaryDark,
+            color: dark ? Colors.white : AppColors.primaryDark,
             size: 20),
       ),
     );
@@ -262,18 +268,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _statCard(BuildContext context, IconData icon, String value,
       String label, Color tint, Color iconColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 6)),
-        ],
-      ),
+    return GlassCard(
+      padding:
+          const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       child: Column(
         children: [
           Container(
@@ -297,6 +294,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  /// "Today, 14 Oct" style subtitle under the greeting.
+  String _todayLabel() {
+    final now = DateTime.now();
+    const monthsAr = [
+      'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    const monthsEn = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final ar = Settings.lang == 'ar';
+    final m = ar ? monthsAr[now.month - 1] : monthsEn[now.month - 1];
+    return '${t('today')}، ${now.day} $m';
+  }
+
   /// Rule-based tip from real usage data (honest, no fake AI).
   String _tip(int studyMin, int streak, int completed, int classes) {
     final ar = Settings.lang == 'ar';
@@ -314,26 +327,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
     if (studyMin < 30 && classes > 0) {
       return ar
-          ? 'عندك $classes حصص النهاردة — راجع ملاحظاتك قبل كل حصة بعشر دقايق.'
-          : 'You have $classes classes today — review notes 10 min before each.';
+          ? 'عندك $classes محاضرات النهاردة — راجع ملاحظاتك قبل كل محاضرة بعشر دقايق.'
+          : 'You have $classes lectures today — review notes 10 min before each.';
     }
     return t('defaultTip');
   }
 
   Widget _tipCard(BuildContext context, int studyMin, int streak,
       int completed, int classes) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 6)),
-        ],
-      ),
+    return GlassCard(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -373,34 +375,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _qa(BuildContext context, IconData icon, String label,
       VoidCallback onTap, Color color) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
+    return GlassCard(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                blurRadius: 14,
-                offset: const Offset(0, 6)),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Icon(icon, color: color, size: 22),
+      padding: const EdgeInsets.all(8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(15),
             ),
-            const SizedBox(height: 6),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 6),
             Text(label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -409,8 +399,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _classRow(BuildContext context, TimetableEntry e) {
@@ -419,6 +408,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassCard(
+        onTap: () => TabNav.go(1),
         child: Row(
           children: [
             Container(

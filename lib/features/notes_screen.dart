@@ -138,7 +138,7 @@ class _NotesScreenState extends State<NotesScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
                   Text(
-                    '${sName ?? ''} ${sName != null ? '• ' : ''}${n.text.length > 60 ? '${n.text.substring(0, 60)}…' : n.text}',
+                    '${sName != null ? '$sName • ' : ''}${n.text.length > 60 ? '${n.text.substring(0, 60)}…' : n.text}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'app.dart';
 import 'core/l10n.dart';
 import 'core/store.dart';
@@ -16,7 +15,6 @@ const _bundledGroqKey =
 /// Applied on every launch so the assistant always just works.
 Future<void> _applyBundledGroqKey() async {
   if (_bundledGroqKey.isEmpty) return;
-  Settings.aiProvider = 'openai';
   Settings.aiBaseUrl = 'https://api.groq.com/openai/v1';
   Settings.aiModel = 'openai/gpt-oss-20b';
   Settings.aiKey = _bundledGroqKey;
@@ -30,9 +28,5 @@ Future<void> main() async {
   await Notify.init();
   // refresh home-screen widget with today's classes
   WidgetService.update();
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.dark,
-  ));
   runApp(const StudyApp());
 }

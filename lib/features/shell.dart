@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../core/l10n.dart';
 import '../core/nav.dart';
@@ -61,7 +62,9 @@ class _ShellState extends State<Shell> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
-          child: BottomNavigationBar(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: BottomNavigationBar(
             currentIndex: _i,
             onTap: (v) => TabNav.go(v),
             type: BottomNavigationBarType.fixed,
@@ -81,6 +84,7 @@ class _ShellState extends State<Shell> {
                 BottomNavigationBarItem(icon: Icon(tb.icon), label: tb.label),
             ],
           ),
+        ),
         ),
       ),
     );

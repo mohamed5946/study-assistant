@@ -152,10 +152,6 @@ class _ScanScreenState extends State<ScanScreen> {
       setState(() => _error = t('noApiKeyMsg'));
       return;
     }
-    if (provider is! GeminiProvider) {
-      setState(() => _error = t('pdfNeedsGemini'));
-      return;
-    }
     setState(() {
       _busy = true;
       _error = null;
