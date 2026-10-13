@@ -56,8 +56,10 @@ ThemeData buildTheme(Brightness b) {
     // Explicit fallbacks so nothing ever renders a light surface in dark
     // mode when a screen/widget falls back to a ThemeData default.
     cardColor: dark ? const Color(0xFF132033) : Colors.white,
-    dialogBackgroundColor:
-        dark ? const Color(0xFF1A2C44) : Colors.white,
+    dialogTheme: DialogThemeData(
+      backgroundColor:
+          dark ? const Color(0xFF1A2C44) : Colors.white,
+    ),
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor:
           dark ? const Color(0xFF16273D) : Colors.white,

@@ -371,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               else
                 Text(
                   [
-                    if (rec!.termGpa != null)
+                    if (rec.termGpa != null)
                       '${t('termGpa')}: ${rec.termGpa!.toStringAsFixed(2)}',
                     if (rec.cumGpa != null)
                       '${t('cumGpa')}: ${rec.cumGpa!.toStringAsFixed(2)}',
