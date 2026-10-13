@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -169,50 +170,53 @@ class _NotesScreenState extends State<NotesScreen> {
     final titleC = TextEditingController(text: n?.title ?? '');
     final textC = TextEditingController(text: n?.text ?? '');
     String subjectId = n?.subjectId ?? _filter;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(n == null ? t('addNote') : t('editNote')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LabeledDropdown<String>(
+              value: subjectId.isEmpty ? null : subjectId,
+              items: [
+                DropdownMenuItem(value: '', child: Text('—')),
+                for (final s in DB.subjects.values)
+                  DropdownMenuItem(value: s.id, child: Text(s.name)),
+              ],
+              onChanged: (v) => setS(() => subjectId = v ?? ''),
+              label: t('subject'),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+                controller: titleC,
+                decoration: InputDecoration(labelText: t('noteTitle'))),
+            const SizedBox(height: 10),
+            TextField(
+              controller: textC,
+              maxLines: 8,
+              decoration: InputDecoration(labelText: t('noteText')),
+            ),
+            const SizedBox(height: 18),
+            Row(
               children: [
-                LabeledDropdown<String>(
-                  value: subjectId.isEmpty ? null : subjectId,
-                  items: [
-                    DropdownMenuItem(value: '', child: Text('—')),
-                    for (final s in DB.subjects.values)
-                      DropdownMenuItem(value: s.id, child: Text(s.name)),
-                  ],
-                  onChanged: (v) => setS(() => subjectId = v ?? ''),
-                  label: t('subject'),
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
                 ),
-                const SizedBox(height: 10),
-                TextField(
-                    controller: titleC,
-                    decoration: InputDecoration(labelText: t('noteTitle'))),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: textC,
-                  maxLines: 8,
-                  decoration: InputDecoration(labelText: t('noteText')),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('save'))),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('save'))),
           ],
         ),
       ),
+      title: n == null ? t('addNote') : t('editNote'),
     );
     if (ok != true) return;
     if (textC.text.trim().isEmpty && titleC.text.trim().isEmpty) {

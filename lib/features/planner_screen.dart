@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/ai.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -78,8 +79,11 @@ class _PlannerScreenState extends State<PlannerScreen> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w800, color: AppColors.primaryDark)),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.pink
+                      : AppColors.primaryDark)),
         ),
         _arrow(Icons.chevron_right_rounded, 1),
       ],
@@ -333,54 +337,58 @@ class _PlannerScreenState extends State<PlannerScreen> {
   Future<void> _planDialog() async {
     int hours = 3;
     String focus = 'revision';
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(t('studyPlanner')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('${t('hoursPerDay')}: $hours'),
-              Slider(
-                value: hours.toDouble(),
-                min: 1,
-                max: 10,
-                divisions: 9,
-                label: '$hours',
-                onChanged: (v) => setS(() => hours = v.round()),
-              ),
-              const SizedBox(height: 8),
-              Text(t('focusType')),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final f in ['deepWork', 'revision', 'examPrep'])
-                    ChoiceChip(
-                      label: Text(t(f)),
-                      selected: focus == f,
-                      selectedColor:
-                          AppColors.primary.withValues(alpha: 0.2),
-                      onSelected: (_) => setS(() => focus = f),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('generatePlan'))),
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('${t('hoursPerDay')}: $hours'),
+            Slider(
+              value: hours.toDouble(),
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: '$hours',
+              onChanged: (v) => setS(() => hours = v.round()),
+            ),
+            const SizedBox(height: 8),
+            Text(t('focusType')),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final f in ['deepWork', 'revision', 'examPrep'])
+                  ChoiceChip(
+                    label: Text(t(f)),
+                    selected: focus == f,
+                    selectedColor:
+                        AppColors.primary.withValues(alpha: 0.2),
+                    onSelected: (_) => setS(() => focus = f),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('generatePlan'))),
+                ),
+              ],
+            ),
           ],
         ),
       ),
+      title: t('studyPlanner'),
     );
     if (ok != true) return;
     await _generatePlan(hours, focus);
@@ -495,23 +503,36 @@ class _PlannerScreenState extends State<PlannerScreen> {
 
   Future<void> _addTask() async {
     final c = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(t('add')),
-        content: TextField(
-            controller: c,
-            decoration: InputDecoration(labelText: t('title'))),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(t('cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(t('save'))),
-        ],
+    final ok = await showGlassSheet<bool>(
+      context,
+      Builder(
+        builder: (ctx) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+                controller: c,
+                decoration: InputDecoration(labelText: t('title'))),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('save'))),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+      title: t('add'),
     );
     if (ok != true || c.text.trim().isEmpty) return;
     final id = newId();
@@ -645,12 +666,15 @@ class _PlannerScreenState extends State<PlannerScreen> {
                 height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color:
-                      it.done ? AppColors.success : Colors.white,
+                  color: it.done
+                      ? AppColors.success
+                      : Theme.of(context).colorScheme.surface,
                   border: Border.all(
                       color: it.done
                           ? AppColors.success
-                          : AppColors.lightMuted,
+                          : Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
                       width: 2),
                 ),
                 child: it.done
@@ -689,13 +713,17 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.access_time_rounded,
+                          Icon(Icons.access_time_rounded,
                               size: 14,
-                              color: AppColors.lightMuted),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                           const SizedBox(width: 4),
                           Text(it.time,
-                              style: const TextStyle(
-                                  color: AppColors.lightMuted,
+                              style: TextStyle(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                   fontSize: 12)),
                         ],
                       ),

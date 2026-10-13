@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -131,99 +132,102 @@ class DeadlinesScreen extends StatelessWidget {
         : DateTime.now().add(const Duration(days: 7));
     int reminder = d?.reminderMin ?? 60;
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(d == null ? t('addDeadline') : t('editDeadline')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+                controller: titleC,
+                decoration: InputDecoration(labelText: t('title'))),
+            const SizedBox(height: 10),
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment(value: 0, label: Text(t('exam'))),
+                ButtonSegment(value: 1, label: Text(t('assignment'))),
+              ],
+              selected: {kind},
+              onSelectionChanged: (s) => setS(() => kind = s.first),
+            ),
+            const SizedBox(height: 10),
+            LabeledDropdown<String>(
+              value: subjectId.isEmpty ? null : subjectId,
+              items: [
+                DropdownMenuItem(value: '', child: Text('—')),
+                for (final s in subjects)
+                  DropdownMenuItem(value: s.id, child: Text(s.name)),
+              ],
+              onChanged: (v) => setS(() => subjectId = v ?? ''),
+              label: t('subject'),
+            ),
+            const SizedBox(height: 10),
+            InkWell(
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: ctx,
+                  initialDate: due,
+                  firstDate: DateTime.now()
+                      .subtract(const Duration(days: 1)),
+                  lastDate:
+                      DateTime.now().add(const Duration(days: 365 * 2)),
+                );
+                if (picked == null) return;
+                if (!ctx.mounted) return;
+                final tp = await showTimePicker(
+                  context: ctx,
+                  initialTime: TimeOfDay.fromDateTime(due),
+                );
+                if (tp == null) return;
+                setS(() => due = DateTime(picked.year, picked.month,
+                    picked.day, tp.hour, tp.minute));
+              },
+              child: InputDecorator(
+                decoration: InputDecoration(labelText: t('date')),
+                child: Text(
+                    '${due.day}/${due.month}/${due.year} ${formatClock(due.hour * 60 + due.minute)}'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            LabeledDropdown<int>(
+              value: reminder,
+              items: const [
+                DropdownMenuItem(value: -1, child: Text('—')),
+                DropdownMenuItem(value: 0, child: Text('0')),
+                DropdownMenuItem(value: 30, child: Text('30')),
+                DropdownMenuItem(value: 60, child: Text('60')),
+                DropdownMenuItem(value: 1440, child: Text('1440')),
+              ],
+              onChanged: (v) => setS(() => reminder = v!),
+              label: '${t('reminder')} (${t('minutes')})',
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: notesC,
+              maxLines: 2,
+              decoration: InputDecoration(labelText: t('notes')),
+            ),
+            const SizedBox(height: 18),
+            Row(
               children: [
-                TextField(
-                    controller: titleC,
-                    decoration: InputDecoration(labelText: t('title'))),
-                const SizedBox(height: 10),
-                SegmentedButton<int>(
-                  segments: [
-                    ButtonSegment(value: 0, label: Text(t('exam'))),
-                    ButtonSegment(value: 1, label: Text(t('assignment'))),
-                  ],
-                  selected: {kind},
-                  onSelectionChanged: (s) => setS(() => kind = s.first),
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
                 ),
-                const SizedBox(height: 10),
-                LabeledDropdown<String>(
-                  value: subjectId.isEmpty ? null : subjectId,
-                  items: [
-                    DropdownMenuItem(value: '', child: Text('—')),
-                    for (final s in subjects)
-                      DropdownMenuItem(value: s.id, child: Text(s.name)),
-                  ],
-                  onChanged: (v) => setS(() => subjectId = v ?? ''),
-                  label: t('subject'),
-                ),
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: ctx,
-                      initialDate: due,
-                      firstDate: DateTime.now()
-                          .subtract(const Duration(days: 1)),
-                      lastDate:
-                          DateTime.now().add(const Duration(days: 365 * 2)),
-                    );
-                    if (picked == null) return;
-                    if (!ctx.mounted) return;
-                    final tp = await showTimePicker(
-                      context: ctx,
-                      initialTime: TimeOfDay.fromDateTime(due),
-                    );
-                    if (tp == null) return;
-                    setS(() => due = DateTime(picked.year, picked.month,
-                        picked.day, tp.hour, tp.minute));
-                  },
-                  child: InputDecorator(
-                    decoration: InputDecoration(labelText: t('date')),
-                    child: Text(
-                        '${due.day}/${due.month}/${due.year} ${formatClock(due.hour * 60 + due.minute)}'),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                LabeledDropdown<int>(
-                  value: reminder,
-                  items: const [
-                    DropdownMenuItem(value: -1, child: Text('—')),
-                    DropdownMenuItem(value: 0, child: Text('0')),
-                    DropdownMenuItem(value: 30, child: Text('30')),
-                    DropdownMenuItem(value: 60, child: Text('60')),
-                    DropdownMenuItem(value: 1440, child: Text('1440')),
-                  ],
-                  onChanged: (v) => setS(() => reminder = v!),
-                  label: '${t('reminder')} (${t('minutes')})',
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: notesC,
-                  maxLines: 2,
-                  decoration: InputDecoration(labelText: t('notes')),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('save'))),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('save'))),
           ],
         ),
       ),
+      title: d == null ? t('addDeadline') : t('editDeadline'),
     );
     if (ok != true) return;
     if (titleC.text.trim().isEmpty) {

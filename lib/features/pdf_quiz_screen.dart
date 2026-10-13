@@ -120,8 +120,10 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off_rounded,
-                size: 64, color: AppColors.lightMuted),
+            Icon(Icons.search_off_rounded,
+                size: 64,
+                color:
+                    Theme.of(context).colorScheme.onSurfaceVariant),
             const SizedBox(height: 16),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -180,8 +182,11 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text('${t('page')} ${q.page}',
-                      style: const TextStyle(
-                          color: AppColors.primaryDark,
+                      style: TextStyle(
+                          color: Theme.of(context).brightness ==
+                                  Brightness.dark
+                              ? AppColors.pink
+                              : AppColors.primaryDark,
                           fontSize: 12,
                           fontWeight: FontWeight.w700)),
                 ),
@@ -213,7 +218,7 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
               ),
             ),
         ] else ...[
-          _revealCard(q, userAns),
+          _revealCard(context, q, userAns),
           const SizedBox(height: 10),
           if (!_showWhy.contains(_idx))
             SizedBox(
@@ -232,9 +237,12 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(t('aiReasoning'),
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontWeight: FontWeight.w800,
-                          color: AppColors.primaryDark)),
+                          color: Theme.of(context).brightness ==
+                                  Brightness.dark
+                              ? AppColors.pink
+                              : AppColors.primaryDark)),
                   const SizedBox(height: 6),
                   Text(
                       q.explanation.isNotEmpty
@@ -313,7 +321,7 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: bg ?? Colors.white,
+            color: bg ?? Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
                 color: border == Colors.transparent
@@ -344,7 +352,7 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
     );
   }
 
-  Widget _revealCard(QuizQ q, String? userAns) {
+  Widget _revealCard(BuildContext context, QuizQ q, String? userAns) {
     final correct = userAns != null &&
         userAns.trim().toLowerCase() == q.answer.trim().toLowerCase();
     return Container(
@@ -474,10 +482,12 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
             Text('${t('yourAnswer')}: ${userAns ?? '—'}',
                 style: const TextStyle(fontSize: 13)),
             Text('${t('correctAnswer')}: ${q.answer}',
-                style: const TextStyle(
+                style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primaryDark)),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.pink
+                        : AppColors.primaryDark)),
           ],
         ),
       ),

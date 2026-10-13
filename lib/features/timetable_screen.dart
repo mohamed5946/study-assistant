@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -207,147 +208,153 @@ class _TimetableScreenState extends State<TimetableScreen> {
     int reminder = e?.reminderMin ?? 15;
     bool overlapWarned = false;
 
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(e == null ? t('addEntry') : t('editEntry')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LabeledDropdown<String>(
+              value: subjectId,
+              items: [
+                for (final s in subjects)
+                  DropdownMenuItem(value: s.id, child: Text(s.name))
+              ],
+              onChanged: (v) => setS(() => subjectId = v!),
+              label: t('subject'),
+            ),
+            const SizedBox(height: 10),
+            SegmentedButton<int>(
+              segments: [
+                ButtonSegment(value: 0, label: Text(t('lecture'))),
+                ButtonSegment(value: 1, label: Text(t('section'))),
+              ],
+              selected: {kind},
+              onSelectionChanged: (s) => setS(() => kind = s.first),
+            ),
+            const SizedBox(height: 10),
+            LabeledDropdown<int>(
+              value: weekday,
+              items: [
+                for (final i in List.generate(7, (k) => k))
+                  DropdownMenuItem(
+                      value: i + 1, child: Text(t(_dayKeys[i])))
+              ],
+              onChanged: (v) => setS(() => weekday = v!),
+              label: t('day'),
+            ),
+            const SizedBox(height: 10),
+            Row(
               children: [
-                LabeledDropdown<String>(
-                  value: subjectId,
-                  items: [
-                    for (final s in subjects)
-                      DropdownMenuItem(value: s.id, child: Text(s.name))
-                  ],
-                  onChanged: (v) => setS(() => subjectId = v!),
-                  label: t('subject'),
-                ),
-                const SizedBox(height: 10),
-                SegmentedButton<int>(
-                  segments: [
-                    ButtonSegment(value: 0, label: Text(t('lecture'))),
-                    ButtonSegment(value: 1, label: Text(t('section'))),
-                  ],
-                  selected: {kind},
-                  onSelectionChanged: (s) => setS(() => kind = s.first),
-                ),
-                const SizedBox(height: 10),
-                LabeledDropdown<int>(
-                  value: weekday,
-                  items: [
-                    for (final i in List.generate(7, (k) => k))
-                      DropdownMenuItem(
-                          value: i + 1, child: Text(t(_dayKeys[i])))
-                  ],
-                  onChanged: (v) => setS(() => weekday = v!),
-                  label: t('day'),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final tp = await showTimePicker(
-                            context: ctx,
-                            initialTime: TimeOfDay(
-                                hour: startMin ~/ 60, minute: startMin % 60),
-                          );
-                          if (tp != null) {
-                            setS(() => startMin = tp.hour * 60 + tp.minute);
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(labelText: t('from')),
-                          child: Text(formatClock(startMin)),
-                        ),
-                      ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final tp = await showTimePicker(
+                        context: ctx,
+                        initialTime: TimeOfDay(
+                            hour: startMin ~/ 60, minute: startMin % 60),
+                      );
+                      if (tp != null) {
+                        setS(() => startMin = tp.hour * 60 + tp.minute);
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(labelText: t('from')),
+                      child: Text(formatClock(startMin)),
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final tp = await showTimePicker(
-                            context: ctx,
-                            initialTime: TimeOfDay(
-                                hour: endMin ~/ 60, minute: endMin % 60),
-                          );
-                          if (tp != null) {
-                            setS(() => endMin = tp.hour * 60 + tp.minute);
-                          }
-                        },
-                        child: InputDecorator(
-                          decoration: InputDecoration(labelText: t('to')),
-                          child: Text(formatClock(endMin)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                    controller: placeC,
-                    decoration: InputDecoration(labelText: t('place'))),
-                const SizedBox(height: 10),
-                TextField(
-                    controller: instC,
-                    decoration: InputDecoration(labelText: t('instructor'))),
-                const SizedBox(height: 10),
-                LabeledDropdown<int>(
-                  value: reminder,
-                  items: const [
-                    DropdownMenuItem(value: -1, child: Text('—')),
-                    DropdownMenuItem(value: 0, child: Text('0')),
-                    DropdownMenuItem(value: 5, child: Text('5')),
-                    DropdownMenuItem(value: 10, child: Text('10')),
-                    DropdownMenuItem(value: 15, child: Text('15')),
-                    DropdownMenuItem(value: 30, child: Text('30')),
-                    DropdownMenuItem(value: 60, child: Text('60')),
-                  ],
-                  onChanged: (v) => setS(() => reminder = v!),
-                  label: '${t('reminder')} (${t('minutes')})',
-                ),
-                if (overlapWarned)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(t('overlapWarning'),
-                        style: const TextStyle(color: AppColors.warning)),
                   ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () async {
+                      final tp = await showTimePicker(
+                        context: ctx,
+                        initialTime: TimeOfDay(
+                            hour: endMin ~/ 60, minute: endMin % 60),
+                      );
+                      if (tp != null) {
+                        setS(() => endMin = tp.hour * 60 + tp.minute);
+                      }
+                    },
+                    child: InputDecorator(
+                      decoration: InputDecoration(labelText: t('to')),
+                      child: Text(formatClock(endMin)),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-              onPressed: () {
-                final existing = DB.timetable.values
-                    .where((x) => x.weekday == weekday)
-                    .map((x) => (start: x.startMin, end: x.endMin, id: x.id))
-                    .toList();
-                if (endMin <= startMin) {
-                  showSnack(ctx, t('invalidNumber'), error: true);
-                  return;
-                }
-                if (hasOverlap(existing, weekday, startMin, endMin,
-                    excludeId: e?.id ?? '')) {
-                  setS(() => overlapWarned = true);
-                  return;
-                }
-                Navigator.pop(ctx, true);
-              },
-              child: Text(t('save')),
+            const SizedBox(height: 10),
+            TextField(
+                controller: placeC,
+                decoration: InputDecoration(labelText: t('place'))),
+            const SizedBox(height: 10),
+            TextField(
+                controller: instC,
+                decoration: InputDecoration(labelText: t('instructor'))),
+            const SizedBox(height: 10),
+            LabeledDropdown<int>(
+              value: reminder,
+              items: const [
+                DropdownMenuItem(value: -1, child: Text('—')),
+                DropdownMenuItem(value: 0, child: Text('0')),
+                DropdownMenuItem(value: 5, child: Text('5')),
+                DropdownMenuItem(value: 10, child: Text('10')),
+                DropdownMenuItem(value: 15, child: Text('15')),
+                DropdownMenuItem(value: 30, child: Text('30')),
+                DropdownMenuItem(value: 60, child: Text('60')),
+              ],
+              onChanged: (v) => setS(() => reminder = v!),
+              label: '${t('reminder')} (${t('minutes')})',
+            ),
+            if (overlapWarned)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(t('overlapWarning'),
+                    style: const TextStyle(color: AppColors.warning)),
+              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      final existing = DB.timetable.values
+                          .where((x) => x.weekday == weekday)
+                          .map((x) => (
+                                start: x.startMin,
+                                end: x.endMin,
+                                id: x.id
+                              ))
+                          .toList();
+                      if (endMin <= startMin) {
+                        showSnack(ctx, t('invalidNumber'), error: true);
+                        return;
+                      }
+                      if (hasOverlap(existing, weekday, startMin, endMin,
+                          excludeId: e?.id ?? '')) {
+                        setS(() => overlapWarned = true);
+                        return;
+                      }
+                      Navigator.pop(ctx, true);
+                    },
+                    child: Text(t('save')),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
+      title: e == null ? t('addEntry') : t('editEntry'),
     );
     if (ok != true) return;
     final id = e?.id ?? newId();

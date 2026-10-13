@@ -265,6 +265,7 @@ void registerAdapters() {
   Hive.registerAdapter(NoteAdapter());
   Hive.registerAdapter(PomodoroSessionAdapter());
   Hive.registerAdapter(TermGradeAdapter());
+  Hive.registerAdapter(TermGpaAdapter());
 }
 
 /// One subject grade inside a (year, term) of the grade history.
@@ -291,5 +292,33 @@ class TermGradeAdapter extends TypeAdapter<TermGrade> {
     w.writeString(o.id); w.writeInt(o.year); w.writeInt(o.term);
     w.writeString(o.subject); w.writeDouble(o.grade);
     w.writeDouble(o.maxGrade);
+  }
+}
+
+// ---------------- TermGpa (simplified per-term GPA) ----------------
+/// Simple per-term GPA record. Stored in its own 'termGpa' box; the legacy
+/// per-subject 'termGrades' box is left untouched for migration safety.
+class TermGpa {
+  final String id;
+  int year; // 1..7
+  int term; // 1 | 2
+  double? termGpa; // المعدل الفصلي (optional)
+  double? cumGpa; // المعدل التراكمي (optional)
+  TermGpa({required this.id, required this.year, required this.term,
+    this.termGpa, this.cumGpa});
+}
+
+class TermGpaAdapter extends TypeAdapter<TermGpa> {
+  @override final int typeId = 13;
+  @override TermGpa read(BinaryReader r) => TermGpa(
+    id: r.readString(), year: r.readInt(), term: r.readInt(),
+    termGpa: r.readBool() ? r.readDouble() : null,
+    cumGpa: r.readBool() ? r.readDouble() : null);
+  @override void write(BinaryWriter w, TermGpa o) {
+    w.writeString(o.id); w.writeInt(o.year); w.writeInt(o.term);
+    w.writeBool(o.termGpa != null);
+    if (o.termGpa != null) w.writeDouble(o.termGpa!);
+    w.writeBool(o.cumGpa != null);
+    if (o.cumGpa != null) w.writeDouble(o.cumGpa!);
   }
 }

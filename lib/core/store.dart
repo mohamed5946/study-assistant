@@ -17,6 +17,7 @@ class DB {
   static late Box<Note> notes;
   static late Box<PomodoroSession> pomodoro;
   static late Box<TermGrade> termGrades;
+  static late Box<TermGpa> termGpas; // simplified per-term GPA records
   static late Box kv; // settings key-value
 
   static Future<void> init() async {
@@ -35,6 +36,7 @@ class DB {
     notes = await Hive.openBox<Note>('notes');
     pomodoro = await Hive.openBox<PomodoroSession>('pomodoro');
     termGrades = await Hive.openBox<TermGrade>('termGrades');
+    termGpas = await Hive.openBox<TermGpa>('termGpa');
     kv = await Hive.openBox('kv');
   }
 

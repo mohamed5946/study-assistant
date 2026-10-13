@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import '../core/ai.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -353,25 +354,38 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
   Future<void> _askPdf() async {
     final qC = TextEditingController();
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(t('askPdf')),
-        content: TextField(
-          controller: qC,
-          maxLines: 3,
-          decoration: InputDecoration(hintText: t('askPdfHint')),
+    final ok = await showGlassSheet<bool>(
+      context,
+      Builder(
+        builder: (ctx) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: qC,
+              maxLines: 3,
+              decoration: InputDecoration(hintText: t('askPdfHint')),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('askPdf'))),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(t('cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(t('askPdf'))),
-        ],
       ),
+      title: t('askPdf'),
     );
     if (ok != true || qC.text.trim().isEmpty) return;
     final provider = AiService.current();
@@ -419,57 +433,62 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
     int count = 10;
     String diff = 'mixed';
     final diffs = ['easy', 'medium', 'hard', 'mixed'];
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(t('genQuestions')),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  Text(t('questionCount')),
-                  Expanded(
-                    child: Slider(
-                      value: count.toDouble(),
-                      min: 5,
-                      max: 30,
-                      divisions: 5,
-                      label: '$count',
-                      onChanged: (v) =>
-                          setS(() => count = v.round()),
-                    ),
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text(t('questionCount')),
+                Expanded(
+                  child: Slider(
+                    value: count.toDouble(),
+                    min: 5,
+                    max: 30,
+                    divisions: 5,
+                    label: '$count',
+                    onChanged: (v) =>
+                        setS(() => count = v.round()),
                   ),
-                  Text('$count'),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  for (final d in diffs)
-                    ChoiceChip(
-                      label: Text(t(d)),
-                      selected: diff == d,
-                      onSelected: (_) => setS(() => diff = d),
-                    ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('generating'))),
+                ),
+                Text('$count'),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                for (final d in diffs)
+                  ChoiceChip(
+                    label: Text(t(d)),
+                    selected: diff == d,
+                    onSelected: (_) => setS(() => diff = d),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('generating'))),
+                ),
+              ],
+            ),
           ],
         ),
       ),
+      title: t('genQuestions'),
     );
     return ok == true ? (count, diff) : null;
   }
@@ -608,15 +627,22 @@ class AiResultScreen extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.menu_book_rounded,
-                              size: 14, color: AppColors.primaryDark),
+                          Icon(Icons.menu_book_rounded,
+                              size: 14,
+                              color: Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? AppColors.pink
+                                  : AppColors.primaryDark),
                           const SizedBox(width: 6),
                           Text(
                             pages.length == 1
                                 ? '${t('sourceFile')} (${t('page')} ${pages.first})'
                                 : '${t('sourceFile')} (${t('page')}: ${pages.join('، ')})',
-                            style: const TextStyle(
-                                color: AppColors.primaryDark,
+                            style: TextStyle(
+                                color: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? AppColors.pink
+                                    : AppColors.primaryDark,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12),
                           ),

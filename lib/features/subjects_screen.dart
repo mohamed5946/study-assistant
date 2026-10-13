@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -88,14 +89,18 @@ class _SubjectCardState extends State<_SubjectCard> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white,
+                Theme.of(context).colorScheme.surface,
                 accent.withValues(alpha: 0.10),
                 accent.withValues(alpha: 0.18),
               ],
               stops: const [0.0, 0.6, 1.0],
             ),
             border: Border.all(
-                color: Colors.white.withValues(alpha: 0.8), width: 1.5),
+                color: Colors.white.withValues(
+                    alpha: Theme.of(context).brightness == Brightness.dark
+                        ? 0.16
+                        : 0.8),
+                width: 1.5),
             boxShadow: [
               BoxShadow(
                   color: accent.withValues(alpha: 0.30),
@@ -120,7 +125,11 @@ class _SubjectCardState extends State<_SubjectCard> {
                     borderRadius: BorderRadius.circular(2),
                     gradient: LinearGradient(colors: [
                       Colors.transparent,
-                      Colors.white.withValues(alpha: 0.95),
+                      Colors.white.withValues(
+                          alpha: Theme.of(context).brightness ==
+                                  Brightness.dark
+                              ? 0.5
+                              : 0.95),
                       Colors.transparent,
                     ]),
                   ),
@@ -182,8 +191,12 @@ class _SubjectCardState extends State<_SubjectCard> {
                             ],
                           ),
                         ),
-                        _iconBtn(Icons.edit_rounded, widget.onEdit,
-                            AppColors.lightMuted),
+                        _iconBtn(
+                            Icons.edit_rounded,
+                            widget.onEdit,
+                            Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant),
                         _iconBtn(Icons.delete_rounded,
                             widget.onDelete, AppColors.error),
                       ],
@@ -209,7 +222,10 @@ class _SubjectCardState extends State<_SubjectCard> {
                                   ? t('noLecturesScheduled')
                                   : '${t('nextLecture')}: ${dayNameL(next.weekday)} ${formatClock(next.startMin)}',
                               style: TextStyle(
-                                  color: AppColors.primaryDark,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? AppColors.pink
+                                      : AppColors.primaryDark,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 13),
                             ),
@@ -270,7 +286,10 @@ class _SubjectCardState extends State<_SubjectCard> {
     return Expanded(
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.lightMuted),
+          Icon(icon,
+              size: 16,
+              color:
+                  Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(width: 5),
           Flexible(
             child: Column(
@@ -370,103 +389,108 @@ class SubjectsScreen extends StatelessWidget {
     final chC = TextEditingController(
         text: s != null ? s.creditHours.toString() : '3');
     int color = s?.colorValue ?? AppColors.subjectPalette.first;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (ctx, setS) => AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text(s == null ? t('addSubject') : t('editSubject')),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                    controller: nameC,
-                    decoration:
-                        InputDecoration(labelText: t('subjectName'))),
-                if (s == null) ...[
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(t('csPresets'),
-                        style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.primaryDark)),
-                  ),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      for (final k in [
-                        'csProg', 'csDS', 'csAlgo', 'csDB',
-                        'csOS', 'csNet', 'csSE'
-                      ])
-                        ActionChip(
-                          label: Text(t(k),
-                              style: const TextStyle(fontSize: 12)),
-                          onPressed: () =>
-                              setS(() => nameC.text = t(k)),
-                        ),
-                    ],
-                  ),
+    final ok = await showGlassSheet<bool>(
+      context,
+      StatefulBuilder(
+        builder: (ctx, setS) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+                controller: nameC,
+                decoration:
+                    InputDecoration(labelText: t('subjectName'))),
+            if (s == null) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(t('csPresets'),
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(ctx).brightness == Brightness.dark
+                            ? AppColors.pink
+                            : AppColors.primaryDark)),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final k in [
+                    'csProg', 'csDS', 'csAlgo', 'csDB',
+                    'csOS', 'csNet', 'csSE'
+                  ])
+                    ActionChip(
+                      label: Text(t(k),
+                          style: const TextStyle(fontSize: 12)),
+                      onPressed: () =>
+                          setS(() => nameC.text = t(k)),
+                    ),
                 ],
-                const SizedBox(height: 10),
-                TextField(
-                    controller: codeC,
-                    decoration: InputDecoration(labelText: t('subjectCode'))),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: chC,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration:
-                      InputDecoration(labelText: t('creditHours')),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(t('color'))),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    for (final c in AppColors.subjectPalette)
-                      GestureDetector(
-                        onTap: () => setS(() => color = c),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Color(c),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: color == c
-                                  ? Theme.of(ctx).colorScheme.onSurface
-                                  : Colors.transparent,
-                              width: 3,
-                            ),
-                          ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            TextField(
+                controller: codeC,
+                decoration: InputDecoration(labelText: t('subjectCode'))),
+            const SizedBox(height: 10),
+            TextField(
+              controller: chC,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              decoration:
+                  InputDecoration(labelText: t('creditHours')),
+            ),
+            const SizedBox(height: 12),
+            Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(t('color'))),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                for (final c in AppColors.subjectPalette)
+                  GestureDetector(
+                    onTap: () => setS(() => color = c),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Color(c),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: color == c
+                              ? Theme.of(ctx).colorScheme.onSurface
+                              : Colors.transparent,
+                          width: 3,
                         ),
                       ),
-                  ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('save'))),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(ctx, false),
-                child: Text(t('cancel'))),
-            FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: Text(t('save'))),
           ],
         ),
       ),
+      title: s == null ? t('addSubject') : t('editSubject'),
     );
     if (ok != true) return;
     if (nameC.text.trim().isEmpty) {

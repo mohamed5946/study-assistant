@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -224,61 +225,66 @@ class _GpaScreenState extends State<GpaScreen>
             ? g.creditHours.toString()
             : (DB.subjects.get(_subjectId)?.creditHours.toString() ??
                 '3'));
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: Text(g == null ? t('addGrade') : t('edit')),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                  controller: nameC,
-                  decoration:
-                      InputDecoration(labelText: t('assessmentName'))),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                      child: TextField(
-                          controller: scoreC,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(
-                                  decimal: true),
-                          decoration: InputDecoration(
-                              labelText: t('score')))),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: TextField(
-                          controller: maxC,
-                          keyboardType:
-                              const TextInputType.numberWithOptions(
-                                  decimal: true),
-                          decoration: InputDecoration(
-                              labelText: t('maxScore')))),
-                ],
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                  controller: chC,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration:
-                      InputDecoration(labelText: t('creditHours'))),
-            ],
-          ),
+    final ok = await showGlassSheet<bool>(
+      context,
+      Builder(
+        builder: (ctx) => Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+                controller: nameC,
+                decoration:
+                    InputDecoration(labelText: t('assessmentName'))),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                    child: TextField(
+                        controller: scoreC,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
+                                decimal: true),
+                        decoration: InputDecoration(
+                            labelText: t('score')))),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: TextField(
+                        controller: maxC,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
+                                decimal: true),
+                        decoration: InputDecoration(
+                            labelText: t('maxScore')))),
+              ],
+            ),
+            const SizedBox(height: 10),
+            TextField(
+                controller: chC,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration:
+                    InputDecoration(labelText: t('creditHours'))),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text(t('cancel'))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text(t('save'))),
+                ),
+              ],
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(t('cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(t('save'))),
-        ],
       ),
+      title: g == null ? t('addGrade') : t('edit'),
     );
     if (ok != true) return;
     final score = double.tryParse(scoreC.text.trim());

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
@@ -313,20 +315,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 child: GestureDetector(
                   onTap: () =>
                       setState(() => _showBack = !_showBack),
-                  child: GlassCard(
-                    padding: const EdgeInsets.all(24),
-                    child: Center(
-                      child: SingleChildScrollView(
-                        child: Text(
-                          _showBack ? c.back : c.front,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              height: 1.7),
-                        ),
-                      ),
-                    ),
+                  child: _Flashcard3D(
+                    key: ValueKey(c.id),
+                    front: c.front,
+                    back: c.back,
+                    showBack: _showBack,
                   ),
                 ),
               ),
@@ -386,5 +379,270 @@ class _ReviewScreenState extends State<ReviewScreen> {
       _i++;
       _showBack = false;
     });
+  }
+}
+
+/// 3D flashcard: a raised, branded-blue card that flips with a real
+/// perspective rotateY animation to reveal the answer on its back.
+///
+/// GPU-cheap: ONE [TweenAnimationBuilder] drives the whole flip. All
+/// decoration (gradients, shadows, sheens) is static and repaint-cached
+/// inside a [RepaintBoundary] — no per-frame blurs or re-layouts.
+class _Flashcard3D extends StatelessWidget {
+  final String front;
+  final String back;
+  final bool showBack;
+
+  const _Flashcard3D({
+    super.key,
+    required this.front,
+    required this.back,
+    required this.showBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return RepaintBoundary(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: showBack ? 1 : 0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+        builder: (context, v, _) {
+          final angle = v * math.pi;
+          // Swap faces exactly when the card is edge-on (v == 0.5) so
+          // the swap is invisible mid-flip.
+          final showFrontFace = v < 0.5;
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0016) // perspective: real 3D depth
+              ..rotateY(angle),
+            child: showFrontFace
+                ? _face(
+                    dark: dark,
+                    isFront: true,
+                    label: t('front'),
+                    icon: Icons.help_outline_rounded,
+                    text: front,
+                    affordanceLabel: t('showAnswer'),
+                    affordanceIcon: Icons.visibility_rounded,
+                  )
+                : Transform(
+                    alignment: Alignment.center,
+                    transform: Matrix4.rotationY(math.pi),
+                    child: _face(
+                      dark: dark,
+                      isFront: false,
+                      label: t('back'),
+                      icon: Icons.lightbulb_rounded,
+                      text: back,
+                      affordanceLabel: t('front'),
+                      affordanceIcon: Icons.flip_rounded,
+                    ),
+                  ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// One raised card face: layered blue gradients, bright top-edge
+  /// highlight, glossy top sheen, bottom vignette, and a soft blue glow
+  /// shadow so the card pops OUT of the screen. Never white-on-white:
+  /// dark mode uses deep-blue dark surfaces, text is always white.
+  Widget _face({
+    required bool dark,
+    required bool isFront,
+    required String label,
+    required IconData icon,
+    required String text,
+    required String affordanceLabel,
+    required IconData affordanceIcon,
+  }) {
+    final gradient = isFront
+        ? (dark
+            ? const [
+                Color(0xFF0E5A8A),
+                Color(0xFF075A8A),
+                Color(0xFF0B2545)
+              ]
+            : const [AppColors.pink, AppColors.primary, AppColors.primaryDark])
+        : (dark
+            ? const [
+                Color(0xFF0F766E),
+                Color(0xFF0B5A66),
+                Color(0xFF0A2733)
+              ]
+            : const [
+                AppColors.secondary,
+                AppColors.primary,
+                Color(0xFF0B3B66)
+              ]);
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          colors: gradient,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: dark ? 0.16 : 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          // colored glow — the "popping out" halo
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: dark ? 0.5 : 0.35),
+            blurRadius: 30,
+            spreadRadius: 2,
+            offset: const Offset(0, 16),
+          ),
+          // soft grounding shadow
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.55 : 0.18),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: Stack(
+          children: [
+            // glossy top sheen
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.center,
+                    colors: [
+                      Colors.white.withValues(alpha: dark ? 0.14 : 0.22),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // bottom vignette for depth
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.center,
+                    colors: [
+                      Colors.black.withValues(alpha: dark ? 0.25 : 0.12),
+                      Colors.black.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            // bright top-edge highlight line
+            Positioned(
+              top: 10,
+              left: 28,
+              right: 28,
+              child: Container(
+                height: 4,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0),
+                      Colors.white.withValues(alpha: dark ? 0.5 : 0.7),
+                      Colors.white.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+              child: Column(
+                children: [
+                  // face label pill (question / answer)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                          color:
+                              Colors.white.withValues(alpha: 0.35)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(icon, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(label,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            height: 1.7,
+                            shadows: [
+                              Shadow(
+                                  color: Color(0x55000000),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // tap-to-flip affordance pill
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(
+                          color:
+                              Colors.white.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(affordanceIcon,
+                            color: Colors.white, size: 18),
+                        const SizedBox(width: 8),
+                        Text(affordanceLabel,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

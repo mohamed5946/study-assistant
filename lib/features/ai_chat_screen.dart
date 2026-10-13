@@ -104,8 +104,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   Settings.hasAiKey ? Text(Settings.aiModel) : null,
             ),
             ListTile(
-              leading: const Icon(Icons.settings_rounded,
-                  color: AppColors.lightMuted),
+              leading: Icon(Icons.settings_rounded,
+                  color:
+                      Theme.of(context).colorScheme.onSurfaceVariant),
               title: Text(t('openSettings')),
               onTap: () {
                 Navigator.pop(context);
@@ -329,7 +330,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             padding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(18),
               boxShadow: [
                 BoxShadow(
@@ -413,7 +414,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Theme.of(context).colorScheme.surface,
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(4),
                     topRight: Radius.circular(18),
@@ -441,6 +442,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   }
 
   Widget _inputBar() {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final deepBlue =
+        dark ? AppColors.pink : AppColors.primaryDark; // readable in both
     return SafeArea(
       top: false,
       child: Padding(
@@ -461,7 +465,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     decoration: BoxDecoration(
                       color: _deepThink
                           ? AppColors.primary.withValues(alpha: 0.14)
-                          : Colors.white,
+                          : Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                           color: AppColors.primary
@@ -475,19 +479,19 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                 ? Icons.psychology_rounded
                                 : Icons.psychology_outlined,
                             size: 16,
-                            color: AppColors.primaryDark),
+                            color: deepBlue),
                         const SizedBox(width: 6),
                         Text(t('deepThink'),
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.primaryDark)),
+                                color: deepBlue)),
                         Icon(
                             _deepThink
                                 ? Icons.check_rounded
                                 : Icons.keyboard_arrow_down_rounded,
                             size: 16,
-                            color: AppColors.primaryDark),
+                            color: deepBlue),
                       ],
                     ),
                   ),
@@ -515,7 +519,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.surface,
                       borderRadius: BorderRadius.circular(26),
                       boxShadow: [
                         BoxShadow(

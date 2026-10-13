@@ -142,7 +142,7 @@ class SubjectDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
             color: accent.withValues(alpha: 0.3)),
@@ -452,7 +452,7 @@ class SubjectDetailScreen extends StatelessWidget {
       padding:
           const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
@@ -547,7 +547,7 @@ class SubjectDetailScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -596,7 +596,7 @@ class SubjectDetailScreen extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
               BoxShadow(
@@ -639,8 +639,10 @@ class SubjectDetailScreen extends StatelessWidget {
               if (trailing != null)
                 trailing
               else if (onTap != null)
-                const Icon(Icons.chevron_right_rounded,
-                    color: AppColors.lightMuted),
+                Icon(Icons.chevron_right_rounded,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurfaceVariant),
             ],
           ),
         ),

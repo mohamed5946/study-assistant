@@ -53,6 +53,20 @@ ThemeData buildTheme(Brightness b) {
     colorScheme: scheme,
     fontFamily: 'Cairo',
     scaffoldBackgroundColor: dark ? AppColors.darkBg : AppColors.lightBg,
+    // Explicit fallbacks so nothing ever renders a light surface in dark
+    // mode when a screen/widget falls back to a ThemeData default.
+    cardColor: dark ? const Color(0xFF132033) : Colors.white,
+    dialogBackgroundColor:
+        dark ? const Color(0xFF1A2C44) : Colors.white,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor:
+          dark ? const Color(0xFF16273D) : Colors.white,
+      modalBackgroundColor:
+          dark ? const Color(0xFF16273D) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -88,6 +102,13 @@ ThemeData buildTheme(Brightness b) {
     ),
     snackBarTheme: SnackBarThemeData(
       behavior: SnackBarBehavior.floating,
+      // Inverse surface: dark snackbar on light theme, light on dark.
+      backgroundColor:
+          dark ? const Color(0xFFE8EEF5) : const Color(0xFF1E293B),
+      contentTextStyle: TextStyle(
+        color: dark ? const Color(0xFF0F172A) : Colors.white,
+        fontFamily: 'Cairo',
+      ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
     ),
   );

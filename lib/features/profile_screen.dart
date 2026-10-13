@@ -1,9 +1,9 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../core/l10n.dart';
-import '../core/logic.dart';
 import '../core/models.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
@@ -21,7 +21,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameC, _uniC, _facC;
   late int _year;
   File? _photo;
-  final Set<String> _expanded = {};
 
   @override
   void initState() {
@@ -90,7 +89,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       appBar: AppBar(title: Text(t('profile'))),
       body: AuroraBackground(
         child: ValueListenableBuilder(
-          valueListenable: DB.termGrades.listenable(),
+          valueListenable: DB.termGpas.listenable(),
           builder: (_, __, ___) => ListView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             children: [
@@ -194,8 +193,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(_yearName(_year),
-                      style: const TextStyle(
-                          color: AppColors.primaryDark,
+                      style: TextStyle(
+                          color: Theme.of(context).brightness ==
+                                  Brightness.dark
+                              ? AppColors.pink
+                              : AppColors.primaryDark,
                           fontWeight: FontWeight.w700,
                           fontSize: 12)),
                 ),
@@ -254,14 +256,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _gradesSection() {
-    final all = DB.termGrades.values.toList();
-    final cum = gradeAverage(
-        all.map((g) => (g.grade, g.maxGrade)).toList());
+    final records = DB.termGpas.values.toList()
+      ..sort((a, b) =>
+          (a.year * 10 + a.term).compareTo(b.year * 10 + b.term));
+    final withCum = records.where((r) => r.cumGpa != null).toList();
+    final latestCum = withCum.isEmpty ? null : withCum.last.cumGpa;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(title: t('gradeHistory')),
-        // cumulative average card
+        // latest cumulative GPA card
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -290,266 +294,371 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(t('cumulativeAverage'),
                         style: const TextStyle(
                             color: Colors.white70, fontSize: 13)),
-                    Text(
-                        all.isEmpty
-                            ? '—'
-                            : '${cum.toStringAsFixed(1)}%',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 30)),
+                    latestCum == null
+                        ? Text(t('noGpaYet'),
+                            style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700))
+                        : Text(latestCum.toStringAsFixed(2),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 30)),
                   ],
                 ),
               ),
-              Text('${all.length} ${t('subjectsCount')}',
+              Text('${records.length} ${t('termsRecorded')}',
                   style: const TextStyle(
                       color: Colors.white70, fontSize: 12)),
             ],
           ),
         ),
         const SizedBox(height: 12),
-        for (var y = 1; y <= _year; y++) ...[
-          for (var tm = 1; tm <= 2; tm++) _termTile(y, tm),
+        for (var y = 1; y <= _year; y++) _yearGroup(y),
+      ],
+    );
+  }
+
+  Widget _yearGroup(int year) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_yearName(year),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 15)),
+            const SizedBox(height: 4),
+            _termRow(year, 1),
+            const Divider(height: 18),
+            _termRow(year, 2),
+          ],
+        ),
+      ),
+    );
+  }
+
+  TermGpa? _findTermGpa(int year, int term) {
+    for (final r in DB.termGpas.values) {
+      if (r.year == year && r.term == term) return r;
+    }
+    return null;
+  }
+
+  Widget _termRow(int year, int term) {
+    final rec = _findTermGpa(year, term);
+    final hasAny = rec != null &&
+        (rec.termGpa != null || rec.cumGpa != null);
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_termName(term),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 14)),
+              const SizedBox(height: 2),
+              if (!hasAny)
+                Text(t('notEntered'),
+                    style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                        fontSize: 12))
+              else
+                Text(
+                  [
+                    if (rec!.termGpa != null)
+                      '${t('termGpa')}: ${rec.termGpa!.toStringAsFixed(2)}',
+                    if (rec.cumGpa != null)
+                      '${t('cumGpa')}: ${rec.cumGpa!.toStringAsFixed(2)}',
+                  ].join('  •  '),
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                      fontSize: 12),
+                ),
+            ],
+          ),
+        ),
+        if (rec == null)
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: t('addTerm'),
+            onPressed: () =>
+                _termGpaSheet(year: year, term: term),
+          )
+        else ...[
+          IconButton(
+            icon: const Icon(Icons.edit_rounded, size: 20),
+            tooltip: t('editTerm'),
+            onPressed: () => _termGpaSheet(existing: rec),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_rounded,
+                size: 20, color: AppColors.error),
+            tooltip: t('delete'),
+            onPressed: () async {
+              if (await confirmDelete(context,
+                  message: t('deleteTerm'))) {
+                await DB.termGpas.delete(rec.id);
+              }
+            },
+          ),
         ],
       ],
     );
   }
 
-  Widget _termTile(int year, int term) {
-    final key = '${year}_$term';
-    final entries = DB.termGrades.values
-        .where((g) => g.year == year && g.term == term)
-        .toList()
-      ..sort((a, b) => a.subject.compareTo(b.subject));
-    final avg =
-        gradeAverage(entries.map((g) => (g.grade, g.maxGrade)).toList());
-    final open = _expanded.contains(key);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GlassCard(
-        padding: EdgeInsets.zero,
-        child: Column(
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(20),
-              onTap: () => setState(() {
-                if (open) {
-                  _expanded.remove(key);
-                } else {
-                  _expanded.add(key);
-                }
-              }),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+  /// Local Liquid Glass bottom sheet helper. Kept local to this file so it
+  /// can't clash with a shared helper a teammate will add later.
+  Future<T?> _showGlassSheet<T>({required Widget child}) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      enableDrag: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        final dark = Theme.of(ctx).brightness == Brightness.dark;
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: AnimatedPadding(
+            padding: MediaQuery.of(ctx).viewInsets,
+            duration: const Duration(milliseconds: 150),
+            child: Container(
+              constraints: BoxConstraints(
+                maxHeight:
+                    MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    cs.surface.withValues(alpha: 0.94),
+                    cs.surfaceContainerHighest
+                        .withValues(alpha: 0.82),
+                  ],
+                ),
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28)),
+                border: Border(
+                  top: BorderSide(
+                      color: Colors.white
+                          .withValues(alpha: dark ? 0.16 : 0.55),
+                      width: 1.2),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.28),
+                    blurRadius: 32,
+                    offset: const Offset(0, -10),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary
-                            .withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(
-                          Icons.school_rounded,
-                          color: AppColors.secondary),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
-                        children: [
-                          Text('${_yearName(year)} • ${_termName(term)}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 15)),
-                          Text(
-                              entries.isEmpty
-                                  ? t('noGradesYet')
-                                  : '${t('termAverage')}: ${avg.toStringAsFixed(1)}% (${entries.length})',
-                              style: TextStyle(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant,
-                                  fontSize: 12)),
-                        ],
+                    // drag handle
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          top: 10, bottom: 2),
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: cs.onSurfaceVariant
+                              .withValues(alpha: 0.4),
+                          borderRadius:
+                              BorderRadius.circular(3),
+                        ),
                       ),
                     ),
-                    Icon(
-                        open
-                            ? Icons.expand_less_rounded
-                            : Icons.expand_more_rounded,
-                        color: AppColors.lightMuted),
+                    Flexible(
+                      child:
+                          SingleChildScrollView(child: child),
+                    ),
                   ],
                 ),
               ),
             ),
-            if (open) ...[
-              const Divider(height: 1),
-              for (final g in entries) _gradeRow(g),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.add_rounded),
-                    label: Text(t('addGrade')),
-                    onPressed: () =>
-                        _gradeDialog(year: year, term: term),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Add / edit form for one term's GPAs (Liquid Glass bottom sheet).
+  Future<void> _termGpaSheet(
+      {int year = 1, int term = 1, TermGpa? existing}) async {
+    var y = (existing?.year ?? year).clamp(1, 7);
+    var tm = (existing?.term ?? term).clamp(1, 2);
+    final termC = TextEditingController(
+        text: existing?.termGpa != null ? '${existing!.termGpa}' : '');
+    final cumC = TextEditingController(
+        text: existing?.cumGpa != null ? '${existing!.cumGpa}' : '');
+    final ok = await _showGlassSheet<bool>(
+      child: StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Text(
+                    existing == null
+                        ? t('addTerm')
+                        : t('editTerm'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17)),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: LabeledDropdown<int>(
+                      label: t('academicYear'),
+                      value: y,
+                      items: [
+                        for (var i = 1; i <= 7; i++)
+                          DropdownMenuItem(
+                              value: i,
+                              child: Text(_yearName(i))),
+                      ],
+                      onChanged: (v) => setSheet(
+                          () => y = (v ?? 1).clamp(1, 7)),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: LabeledDropdown<int>(
+                      label: t('term'),
+                      value: tm,
+                      items: [
+                        DropdownMenuItem(
+                            value: 1,
+                            child: Text(t('term1'))),
+                        DropdownMenuItem(
+                            value: 2,
+                            child: Text(t('term2'))),
+                      ],
+                      onChanged: (v) => setSheet(
+                          () => tm = (v ?? 1).clamp(1, 2)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: termC,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                              decimal: true),
+                      decoration: InputDecoration(
+                        labelText: t('termGpa'),
+                        hintText: t('optional'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: cumC,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(
+                              decimal: true),
+                      decoration: InputDecoration(
+                        labelText: t('cumGpa'),
+                        hintText: t('optional'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(t('gpaOptionalHint'),
+                  style: TextStyle(
+                      color: Theme.of(ctx)
+                          .colorScheme
+                          .onSurfaceVariant,
+                      fontSize: 12)),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () =>
+                          Navigator.pop(ctx, false),
+                      child: Text(t('cancel')),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () =>
+                          Navigator.pop(ctx, true),
+                      child: Text(t('save')),
+                    ),
+                  ),
+                ],
               ),
             ],
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _gradeRow(TermGrade g) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(g.subject,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w700)),
-                Text('${g.grade} / ${g.maxGrade}',
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        fontSize: 12)),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: _pctColor(g.pct).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text('${g.pct.toStringAsFixed(1)}%',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: _pctColor(g.pct),
-                    fontSize: 13)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.edit_rounded, size: 18),
-            onPressed: () => _gradeDialog(existing: g),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_rounded,
-                size: 18, color: AppColors.error),
-            onPressed: () async {
-              if (await confirmDelete(context)) {
-                await DB.termGrades.delete(g.id);
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Color _pctColor(double pct) {
-    if (pct >= 85) return AppColors.success;
-    if (pct >= 60) return AppColors.primary;
-    if (pct >= 50) return AppColors.warning;
-    return AppColors.error;
-  }
-
-  Future<void> _gradeDialog(
-      {int year = 1, int term = 1, TermGrade? existing}) async {
-    final subC =
-        TextEditingController(text: existing?.subject ?? '');
-    final gradeC = TextEditingController(
-        text: existing != null ? '${existing.grade}' : '');
-    final maxC = TextEditingController(
-        text: existing != null ? '${existing.maxGrade}' : '100');
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20)),
-        title: Text(
-            existing == null ? t('addGrade') : t('editGrade')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: subC,
-                decoration:
-                    InputDecoration(labelText: t('subjectName'))),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                      controller: gradeC,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(
-                              decimal: true),
-                      decoration: InputDecoration(
-                          labelText: t('grade'))),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                      controller: maxC,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(
-                              decimal: true),
-                      decoration: InputDecoration(
-                          labelText: t('maxGrade'))),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(t('cancel'))),
-          FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(t('save'))),
-        ],
       ),
     );
     if (ok != true) return;
-    final grade = double.tryParse(gradeC.text.trim()) ?? -1;
-    final max =
-        double.tryParse(maxC.text.trim()) ?? 100;
-    if (subC.text.trim().isEmpty || grade < 0 || max <= 0) {
-      if (mounted) showSnack(context, t('invalidNumber'), error: true);
+    double? tg, cg;
+    var bad = false;
+    final tgRaw = termC.text.trim();
+    if (tgRaw.isNotEmpty) {
+      tg = double.tryParse(tgRaw);
+      if (tg == null || tg < 0 || tg > 5) bad = true;
+    }
+    final cgRaw = cumC.text.trim();
+    if (cgRaw.isNotEmpty) {
+      cg = double.tryParse(cgRaw);
+      if (cg == null || cg < 0 || cg > 5) bad = true;
+    }
+    if (bad) {
+      if (mounted) showSnack(context, t('invalidGpa'), error: true);
+      return;
+    }
+    final dup = _findTermGpa(y, tm);
+    if (dup != null && (existing == null || dup.id != existing.id)) {
+      if (mounted) showSnack(context, t('termExists'), error: true);
       return;
     }
     if (existing != null) {
-      existing.subject = subC.text.trim();
-      existing.grade = grade;
-      existing.maxGrade = max;
-      await DB.termGrades.put(existing.id, existing);
+      existing.year = y;
+      existing.term = tm;
+      existing.termGpa = tg;
+      existing.cumGpa = cg;
+      await DB.termGpas.put(existing.id, existing);
     } else {
       final id = newId();
-      await DB.termGrades.put(
-        id,
-        TermGrade(
-            id: id,
-            year: year,
-            term: term,
-            subject: subC.text.trim(),
-            grade: grade,
-            maxGrade: max),
-      );
+      await DB.termGpas.put(
+          id,
+          TermGpa(
+              id: id,
+              year: y,
+              term: tm,
+              termGpa: tg,
+              cumGpa: cg));
     }
   }
 }

@@ -386,8 +386,10 @@ class _TimetableImportScreenState extends State<TimetableImportScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.edit_rounded,
-                size: 16, color: AppColors.lightMuted),
+            Icon(Icons.edit_rounded,
+                size: 16,
+                color:
+                    Theme.of(context).colorScheme.onSurfaceVariant),
           ],
         ),
       ),
