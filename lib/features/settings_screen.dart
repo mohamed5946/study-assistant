@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
+import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/notify.dart';
 import '../core/store.dart';
@@ -105,10 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Expanded(child: Text(t('aiReady'))),
                   const SizedBox(width: 8),
                   _testing
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const BookLoader(size: 30)
                       : OutlinedButton.icon(
                           icon: const Icon(Icons.bolt_rounded, size: 18),
                           label: Text(t('checkNow')),
@@ -166,6 +165,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SectionHeader(title: t('about')),
             GlassCard(child: Text(t('aboutText'))),
+            SectionHeader(title: t('contact')),
+            GlassCard(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => _showContact(context),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color:
+                              AppColors.primary.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.contact_support_rounded,
+                            color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(t('contact'))),
+                      const Icon(Icons.chevron_left_rounded,
+                          color: AppColors.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             OutlinedButton.icon(
               icon: const Icon(Icons.notifications_rounded),
@@ -187,8 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               icon: const Icon(Icons.delete_forever_rounded),
               label: Text(t('clearData')),
               onPressed: () async {
-                if (await confirmDelete(context,
-                    message: t('clearDataMsg'))) {
+                if (await confirmDelete(context)) {
                   await DB.clearAll();
                   if (context.mounted) {
                     showSnack(context, '✅');
@@ -199,6 +226,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showContact(BuildContext context) {
+    // Exact strings as requested — do not translate or rephrase.
+    const lines = [
+      r'developer \ Mohamed EL Sayed',
+      'Phone : +201557887719',
+      'جميع الحقوق محفوظة لدينا',
+    ];
+    return showGlassDialog<void>(
+      context,
+      title: t('contact'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final line in lines) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 7),
+              child: Text(
+                line,
+                textAlign: TextAlign.center,
+                textDirection: line.startsWith('developer') ||
+                        line.startsWith('Phone')
+                    ? TextDirection.ltr
+                    : null,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.6,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(t('done')),
+        ),
+      ],
     );
   }
 

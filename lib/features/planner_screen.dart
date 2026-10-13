@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
@@ -309,7 +310,7 @@ class _PlannerScreenState extends State<PlannerScreen> {
           ),
           if (_generating) ...[
             const SizedBox(height: 16),
-            const StudyLoadingBar(),
+            const BookLoader(),
           ] else if (_aiPlan != null) ...[
             const SizedBox(height: 12),
             SelectableText(_aiPlan!,

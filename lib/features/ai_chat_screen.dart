@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/code_text.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
@@ -123,8 +124,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 style: const TextStyle(color: AppColors.error)),
             onTap: () async {
               Navigator.pop(context);
-              final confirmed = await confirmDelete(context,
-                  message: t('clearChat'));
+              final confirmed = await confirmDelete(context);
               if (confirmed) {
                 await DB.chat.clear();
                 if (mounted) showSnack(context, t('chatCleared'));
@@ -318,7 +318,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ],
             ),
             child: const SizedBox(
-                width: 110, child: StudyLoadingBar()),
+                width: 110, child: Center(child: BookLoader(size: 56))),
           ),
         ],
       ),
@@ -529,13 +529,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                                 horizontal: 18, vertical: 12),
                         suffixIcon: _sending
                             ? const Padding(
-                                padding: EdgeInsets.all(14),
-                                child: SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child:
-                                        CircularProgressIndicator(
-                                            strokeWidth: 2)),
+                                padding: EdgeInsets.all(12),
+                                child: BookLoader(size: 22),
                               )
                             : null,
                       ),

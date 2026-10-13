@@ -409,8 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 size: 20, color: AppColors.error),
             tooltip: t('delete'),
             onPressed: () async {
-              if (await confirmDelete(context,
-                  message: t('deleteTerm'))) {
+              if (await confirmDelete(context)) {
                 await DB.termGpas.delete(rec.id);
               }
             },

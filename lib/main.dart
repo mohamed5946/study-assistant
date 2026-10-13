@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'app.dart';
+import 'core/book_loader.dart';
 import 'core/l10n.dart';
 import 'core/store.dart';
 import 'core/notify.dart';
@@ -22,6 +23,9 @@ Future<void> _applyBundledGroqKey() async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Branded animated splash (flipping book) shows immediately while the
+  // app initializes underneath — replaces the static native splash.
+  runApp(const BookSplash());
   await DB.init();
   await _applyBundledGroqKey();
   L.lang.value = Settings.lang;

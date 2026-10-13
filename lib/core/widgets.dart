@@ -78,16 +78,18 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-Future<bool> confirmDelete(BuildContext context, {String? message}) async {
+/// Simple delete confirmation: glass card with just the small
+/// "تأكيد الحذف" text and أيوه / لأ buttons — no extra decoration.
+Future<bool> confirmDelete(BuildContext context) async {
   final r = await showGlassDialog<bool>(
     context,
-    title: t('confirmDelete'),
     content: Text(
-      message ?? t('confirmDeleteMsg'),
+      t('confirmDelete'),
       textAlign: TextAlign.center,
       style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          height: 1.7),
+          fontWeight: FontWeight.w700,
+          fontSize: 15,
+          color: Theme.of(context).colorScheme.onSurface),
     ),
     actions: [
       TextButton(
@@ -185,6 +187,9 @@ class LabeledDropdown<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return InputDecorator(
       decoration: InputDecoration(labelText: label),
+      // Tell the decorator when there's no value so the label rests
+      // INSIDE the box as a hint instead of floating above/outside it.
+      isEmpty: value == null || (value is String && (value as String).isEmpty),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(
           value: value,

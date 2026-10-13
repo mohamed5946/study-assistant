@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/code_text.dart';
 import '../core/l10n.dart';
 import '../core/store.dart';
@@ -61,7 +62,7 @@ class _ScanScreenState extends State<ScanScreen> {
             ],
             if (_busy) ...[
               const SizedBox(height: 20),
-              const StudyLoadingBar(),
+              const BookLoader(),
               const SizedBox(height: 8),
               Center(child: Text(t('solving'))),
             ],

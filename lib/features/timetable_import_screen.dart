@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
@@ -202,7 +203,7 @@ class _TimetableImportScreenState extends State<TimetableImportScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const StudyLoadingBar(),
+            const BookLoader(),
             const SizedBox(height: 20),
             Text(t('analyzingTimetable'),
                 style:

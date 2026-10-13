@@ -154,8 +154,7 @@ class _NotesScreenState extends State<NotesScreen> {
               icon:
                   const Icon(Icons.delete_rounded, color: AppColors.error),
               onPressed: () async {
-                if (await confirmDelete(context,
-                    message: t('deleteNote'))) {
+                if (await confirmDelete(context)) {
                   await DB.notes.delete(n.id);
                 }
               },

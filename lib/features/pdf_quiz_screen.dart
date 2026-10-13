@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
@@ -96,7 +97,7 @@ class _PdfSelfTestScreenState extends State<PdfSelfTestScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const StudyLoadingBar(),
+            const BookLoader(),
             const SizedBox(height: 20),
             Text(t('extractingQuestions'),
                 style: const TextStyle(fontWeight: FontWeight.w700)),

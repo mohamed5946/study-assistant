@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import '../core/ai.dart';
+import '../core/book_loader.dart';
 import '../core/glass_dialog.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
@@ -255,11 +256,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         actions: [
           if (_busy)
             const Padding(
-              padding: EdgeInsets.all(16),
-              child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2)),
+              padding: EdgeInsets.all(12),
+              child: BookLoader(size: 28),
             )
           else ...[
             IconButton(
@@ -291,7 +289,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         ],
       ),
       body: _busy
-          ? const Center(child: StudyLoadingBar())
+          ? const Center(child: BookLoader())
           : PdfView(
               controller: _pdf,
               scrollDirection: Axis.vertical,
