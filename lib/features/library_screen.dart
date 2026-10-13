@@ -16,13 +16,20 @@ import '../core/widgets.dart';
 import 'pdf_quiz_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key});
+  final String initialSubjectId;
+  const LibraryScreen({super.key, this.initialSubjectId = ''});
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  String _filter = '';
+  late String _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter = widget.initialSubjectId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,9 +172,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         '${dir.path}/pdf_${DateTime.now().millisecondsSinceEpoch}.pdf');
     await src.copy(dest.path);
 
-    String subjectId = '';
+    String subjectId = _filter;
     final subjects = DB.subjects.values.toList();
-    if (subjects.isNotEmpty) {
+    if (subjects.isNotEmpty && _filter.isEmpty) {
       if (!mounted) return;
       subjectId = await showDialog<String>(
             context: context,

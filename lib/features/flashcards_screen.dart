@@ -7,13 +7,20 @@ import '../core/theme.dart';
 import '../core/widgets.dart';
 
 class FlashcardsScreen extends StatefulWidget {
-  const FlashcardsScreen({super.key});
+  final String initialSubjectId;
+  const FlashcardsScreen({super.key, this.initialSubjectId = ''});
   @override
   State<FlashcardsScreen> createState() => _FlashcardsScreenState();
 }
 
 class _FlashcardsScreenState extends State<FlashcardsScreen> {
-  String _filter = '';
+  late String _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter = widget.initialSubjectId;
+  }
 
   @override
   Widget build(BuildContext context) {

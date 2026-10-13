@@ -596,62 +596,82 @@ class _PlannerScreenState extends State<PlannerScreen> {
   }
 
   Widget _timelineRow(_TimelineItem it, bool last) {
-    final dotColor = it.done
-        ? AppColors.success
-        : it.isClass
-            ? AppColors.primary
-            : AppColors.warning;
+    final dotColor =
+        it.done ? AppColors.success : AppColors.primary;
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            children: [
-              Container(
-                width: 18,
-                height: 18,
+          // rail: filled dot + dotted vertical line
+          SizedBox(
+            width: 16,
+            child: Column(
+              children: [
+                const SizedBox(height: 16),
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: dotColor,
+                    boxShadow: [
+                      BoxShadow(
+                          color:
+                              dotColor.withValues(alpha: 0.4),
+                          blurRadius: 6)
+                    ],
+                  ),
+                ),
+                if (!last)
+                  Expanded(
+                    child: _DottedLine(
+                        color: AppColors.primary
+                            .withValues(alpha: 0.35)),
+                  )
+                else
+                  const SizedBox(height: 6),
+              ],
+            ),
+          ),
+          const SizedBox(width: 4),
+          // radio circle (toggles done for tasks)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: it.isClass ? null : () => _toggleDone(it),
+              child: Container(
+                width: 24,
+                height: 24,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: it.done ? dotColor : Colors.white,
-                  border: Border.all(color: dotColor, width: 2.5),
+                  color:
+                      it.done ? AppColors.success : Colors.white,
+                  border: Border.all(
+                      color: it.done
+                          ? AppColors.success
+                          : AppColors.lightMuted,
+                      width: 2),
                 ),
                 child: it.done
                     ? const Icon(Icons.check_rounded,
-                        size: 12, color: Colors.white)
+                        size: 15, color: Colors.white)
                     : null,
               ),
-              if (!last)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: last ? 4 : 16),
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
-                onTap: it.isClass
-                    ? null
-                    : () async {
-                        final d = DB.deadlines.get(it.id);
-                        if (d != null) {
-                          d.done = !d.done;
-                          await DB.deadlines.put(d.id, d);
-                        }
-                      },
+                onTap: it.isClass ? null : () => _toggleDone(it),
                 child: GlassCard(
                   padding: const EdgeInsets.all(14),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
                       Text(it.title,
                           style: TextStyle(
@@ -670,7 +690,8 @@ class _PlannerScreenState extends State<PlannerScreen> {
                       Row(
                         children: [
                           const Icon(Icons.access_time_rounded,
-                              size: 14, color: AppColors.lightMuted),
+                              size: 14,
+                              color: AppColors.lightMuted),
                           const SizedBox(width: 4),
                           Text(it.time,
                               style: const TextStyle(
@@ -688,6 +709,50 @@ class _PlannerScreenState extends State<PlannerScreen> {
       ),
     );
   }
+
+  Future<void> _toggleDone(_TimelineItem it) async {
+    final d = DB.deadlines.get(it.id);
+    if (d != null) {
+      d.done = !d.done;
+      await DB.deadlines.put(d.id, d);
+    }
+  }
+}
+
+/// Vertical dotted line for the planner timeline.
+class _DottedLine extends StatelessWidget {
+  final Color color;
+  const _DottedLine({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DottedPainter(color),
+      child: const SizedBox(width: 2, height: double.infinity),
+    );
+  }
+}
+
+class _DottedPainter extends CustomPainter {
+  final Color color;
+  _DottedPainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+    const step = 9.0;
+    final cx = size.width / 2;
+    for (var y = 2.0; y < size.height - 2; y += step) {
+      canvas.drawLine(Offset(cx, y), Offset(cx, y + 4.5), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) =>
+      false;
 }
 
 class _TimelineItem {

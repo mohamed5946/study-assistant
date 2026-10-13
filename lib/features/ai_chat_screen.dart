@@ -15,7 +15,8 @@ import 'library_screen.dart';
 /// blue avatar, suggestion chips, input bar with + button, Deep Think
 /// dropdown and blue send button.
 class AiChatScreen extends StatefulWidget {
-  const AiChatScreen({super.key});
+  final String initialPrompt;
+  const AiChatScreen({super.key, this.initialPrompt = ''});
   @override
   State<AiChatScreen> createState() => _AiChatScreenState();
 }
@@ -26,6 +27,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _focus = FocusNode();
   bool _sending = false;
   bool _deepThink = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialPrompt.isNotEmpty) {
+      _input.text = widget.initialPrompt;
+    }
+  }
 
   @override
   void dispose() {

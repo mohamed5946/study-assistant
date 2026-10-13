@@ -6,14 +6,21 @@ import '../core/theme.dart';
 import '../core/widgets.dart';
 
 class NotesScreen extends StatefulWidget {
-  const NotesScreen({super.key});
+  final String initialSubjectId;
+  const NotesScreen({super.key, this.initialSubjectId = ''});
   @override
   State<NotesScreen> createState() => _NotesScreenState();
 }
 
 class _NotesScreenState extends State<NotesScreen> {
   String _q = '';
-  String _filter = '';
+  late String _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _filter = widget.initialSubjectId;
+  }
 
   @override
   Widget build(BuildContext context) {

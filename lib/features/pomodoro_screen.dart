@@ -7,7 +7,8 @@ import '../core/theme.dart';
 import '../core/widgets.dart';
 
 class PomodoroScreen extends StatefulWidget {
-  const PomodoroScreen({super.key});
+  final String initialSubjectId;
+  const PomodoroScreen({super.key, this.initialSubjectId = ''});
   @override
   State<PomodoroScreen> createState() => _PomodoroScreenState();
 }
@@ -24,6 +25,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   void initState() {
     super.initState();
     _remaining = Settings.focusMin * 60;
+    _subjectId = widget.initialSubjectId;
   }
 
   @override
