@@ -73,9 +73,8 @@ void main() {
       DB.attempts, DB.attendance, DB.grades, DB.notes, DB.pomodoro,
     ]) {
       expect(box.values.any((v) {
-        final m = (v as dynamic);
-        return (m.subjectId as String?) == doomed ||
-            (m is ExamAttempt && m.examId == 'ex_$doomed');
+        if (v is ExamAttempt) return v.examId == 'ex_$doomed';
+        return (v as dynamic).subjectId == doomed;
       }), isFalse, reason: 'orphan left in ${box.name}');
     }
 
