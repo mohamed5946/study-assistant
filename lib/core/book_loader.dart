@@ -114,12 +114,14 @@ class _FlippingBookPainter extends CustomPainter {
     final dx = math.cos(angle) * pw;
     final shade = (math.sin(angle).abs() * 70).round().clamp(0, 70);
     final base = dark ? const Color(0xFFDCE9FF) : Colors.white;
+    int shadeChannel(double channel, int shadeAmt) =>
+        ((channel * 255.0).round() - shadeAmt).clamp(0, 255);
     final flipPaint = Paint()
       ..color = Color.fromARGB(
         255,
-        (base.red - shade).clamp(0, 255),
-        (base.green - shade).clamp(0, 255),
-        (base.blue - shade ~/ 2).clamp(0, 255),
+        shadeChannel(base.r, shade),
+        shadeChannel(base.g, shade),
+        shadeChannel(base.b, shade ~/ 2),
       );
 
     final x0 = dx >= 0 ? cx : cx + dx;
