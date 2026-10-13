@@ -255,8 +255,8 @@ class AiService {
   static String systemPrompt() {
     final ar = Settings.lang == 'ar';
     return ar
-        ? 'أنت مساعد مذاكرة ذكي لطالب جامعي. اشرح ببساطة وبأمثلة، وبالعربية (فصحى مبسطة). إجاباتك للمساعدة التعليمية فقط.'
-        : 'You are a smart study assistant for a university student. Explain simply with examples, in English. Your answers are educational assistance only.';
+        ? 'أنت مساعد مذاكرة ذكي لطالب جامعي في علوم الحاسب (نظم الحاسب ونظم المعلومات). اشرح ببساطة وبأمثلة، وبالعربية (فصحى مبسطة). عند شرح مفاهيم برمجية اذكر مثال كود قصير — الشرح بالعربية والكود بالإنجليزية داخل ```code blocks```. إجاباتك للمساعدة التعليمية فقط.'
+        : 'You are a smart study assistant for a Computer Science university student. Explain simply with examples, in English. When explaining programming concepts, include a short code example inside ```code blocks```. Your answers are educational assistance only.';
   }
 
   /// Asks the model to return a JSON array of questions.
@@ -268,6 +268,7 @@ Generate $count study questions ($difficulty difficulty) in $lang from the attac
 Return ONLY a JSON array, no markdown fences, no extra text. Each item:
 {"q":"question text","type":"mcq"|"tf"|"short","options":["a","b","c","d"],"answer":"exact correct option text (or true/false for tf, or empty for short)","explanation":"brief why"}
 For tf type use options ["true","false"]. For short type use options [] and answer "".
+If the PDF is about computer science/programming, the "explanation" may include a tiny code example where relevant (keep it short).
 ''';
   }
 
@@ -310,11 +311,12 @@ Rules:
   static String scanQuestionPrompt({required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
     return '''
-Look at this photo of a textbook/exam question. Read the question carefully, then solve it step by step in $lang.
-Format:
-1. First restate the question briefly.
-2. Then the solution steps, numbered.
-3. End with the final answer clearly marked.
+Look at this photo. It shows a study question — it may also be a photo of CODE from a whiteboard or notebook (the user is a Computer Science student).
+
+1. First transcribe what you see (the question text, or the code as-is).
+2. If it is a question: solve it step by step in $lang.
+3. If it is CODE: explain what the code does in $lang, point out any bugs and show the fixed code inside ```code blocks```, then add a short complexity note (Big-O time/space).
+4. Keep code itself in English; explanations in $lang.
 If the photo is unreadable, say so and ask for a clearer photo.
 ''';
   }

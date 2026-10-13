@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/ai.dart';
+import '../core/code_text.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/nav.dart';
@@ -22,6 +23,7 @@ class AiChatScreen extends StatefulWidget {
 class _AiChatScreenState extends State<AiChatScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
+  final _focus = FocusNode();
   bool _sending = false;
   bool _deepThink = false;
 
@@ -29,6 +31,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   void dispose() {
     _input.dispose();
     _scroll.dispose();
+    _focus.dispose();
     super.dispose();
   }
 
@@ -254,9 +257,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
               runSpacing: 10,
               alignment: WrapAlignment.center,
               children: [
-                _suggestion(t('studyTipsExams')),
-                _suggestion(t('helpCalculus')),
-                _suggestion(t('explainTopic')),
+                _csSuggestion(
+                    t('explainThisCode'), '${t('explainThisCode')}:\n'),
+                _csSuggestion(
+                    t('helpMeDebug'), '${t('helpMeDebug')}:\n'),
+                _csSuggestion(
+                    t('practicalExample'), '${t('practicalExample')}: '),
               ],
             ),
           ],
@@ -265,12 +271,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  Widget _suggestion(String label) {
+  /// CS suggestion chip: fills the input with the prompt and focuses it
+  /// so the user can paste his code / topic, then hit send.
+  Widget _csSuggestion(String label, String prefix) {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: () {
-        _input.text = label;
-        _send();
+        _input.text = prefix;
+        _input.selection = TextSelection.fromPosition(
+            TextPosition(offset: _input.text.length));
+        _focus.requestFocus();
       },
       child: Container(
         padding:
@@ -409,7 +419,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                         offset: const Offset(0, 4)),
                   ],
                 ),
-                child: SelectableText(m.text,
+                child: CodeAwareText(
+                    text: m.text,
                     style: const TextStyle(
                         fontSize: 14.5, height: 1.6)),
               ),
@@ -507,6 +518,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     ),
                     child: TextField(
                       controller: _input,
+                      focusNode: _focus,
                       minLines: 1,
                       maxLines: 4,
                       decoration: InputDecoration(

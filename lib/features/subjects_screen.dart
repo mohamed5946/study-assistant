@@ -125,6 +125,34 @@ class SubjectsScreen extends StatelessWidget {
                     controller: nameC,
                     decoration:
                         InputDecoration(labelText: t('subjectName'))),
+                if (s == null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(t('csPresets'),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryDark)),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final k in [
+                        'csProg', 'csDS', 'csAlgo', 'csDB',
+                        'csOS', 'csNet', 'csSE'
+                      ])
+                        ActionChip(
+                          label: Text(t(k),
+                              style: const TextStyle(fontSize: 12)),
+                          onPressed: () =>
+                              setS(() => nameC.text = t(k)),
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
                 TextField(
                     controller: codeC,

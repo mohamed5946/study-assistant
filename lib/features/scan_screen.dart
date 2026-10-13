@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/ai.dart';
+import '../core/code_text.dart';
 import '../core/l10n.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
@@ -74,8 +75,10 @@ class _ScanScreenState extends State<ScanScreen> {
               const SizedBox(height: 16),
               SectionHeader(title: t('solution')),
               GlassCard(
-                child: SelectableText(_solution!,
-                    style: const TextStyle(fontSize: 15, height: 1.8)),
+                child: CodeAwareText(
+                    text: _solution!,
+                    style: const TextStyle(
+                        fontSize: 15, height: 1.8)),
               ),
             ],
           ],

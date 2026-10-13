@@ -157,3 +157,54 @@ double gradeAverage(List<(double, double)> entries) {
   }
   return n == 0 ? 0 : sum / n;
 }
+
+/// --- GPA goal planner ("محتاج أجيب كام؟") ---
+
+/// Required term GPA to reach [targetGpa] cumulative.
+/// Null when [currentCredits] <= 0. May exceed 4.0 (impossible) or be
+/// negative (target already secured).
+double? requiredTermGpa({
+  required double prevGpa,
+  required double prevCredits,
+  required double targetGpa,
+  required double currentCredits,
+}) {
+  if (currentCredits <= 0) return null;
+  return (targetGpa * (prevCredits + currentCredits) -
+          prevGpa * prevCredits) /
+      currentCredits;
+}
+
+/// Highest cumulative GPA reachable if the student scores 4.0
+/// in all [currentCredits].
+double maxAchievableGpa({
+  required double prevGpa,
+  required double prevCredits,
+  required double currentCredits,
+}) {
+  final total = prevCredits + currentCredits;
+  if (total <= 0) return 0;
+  return (prevGpa * prevCredits + 4.0 * currentCredits) / total;
+}
+
+/// Projected cumulative GPA if the student scores [termGpa] this term.
+/// Null when there are no credits at all.
+double? projectedGpa({
+  required double prevGpa,
+  required double prevCredits,
+  required double termGpa,
+  required double currentCredits,
+}) {
+  final total = prevCredits + currentCredits;
+  if (total <= 0) return null;
+  return (prevGpa * prevCredits + termGpa * currentCredits) / total;
+}
+
+/// Letter grade + Arabic تقدير for a GPA value on the 4.0 scale.
+({String letter, String ar}) gpaLetter(double gpa) {
+  if (gpa >= 3.7) return (letter: 'A', ar: 'امتياز');
+  if (gpa >= 3.0) return (letter: 'B', ar: 'جيد جدًا');
+  if (gpa >= 2.0) return (letter: 'C', ar: 'جيد');
+  if (gpa >= 1.0) return (letter: 'D', ar: 'مقبول');
+  return (letter: 'F', ar: 'ضعيف');
+}

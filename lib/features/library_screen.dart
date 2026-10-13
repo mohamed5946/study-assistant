@@ -307,8 +307,8 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       late String prompt;
       if (kind == 'explain') {
         prompt = ar
-            ? 'اشرح محتوى ملف الـ PDF المرفق بأسلوب مبسط مع أمثلة، بالعربية.'
-            : 'Explain the attached PDF content simply with examples, in English.';
+            ? 'اشرح محتوى ملف الـ PDF المرفق بأسلوب مبسط مع أمثلة، بالعربية. لو المحتوى عن علوم الحاسب/البرمجة، اذكر أمثلة كود قصيرة بالإنجليزية داخل ```code blocks``` مع الشرح بالعربية.'
+            : 'Explain the attached PDF content simply with examples, in English. If the content is about computer science/programming, include tiny code examples inside ```code blocks``` where relevant.';
       } else if (kind == 'summary') {
         prompt = ar
             ? 'اعمل ملخص من صفحة واحدة تقريبًا لأهم النقاط في ملف الـ PDF المرفق، بالعربية.'

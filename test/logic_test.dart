@@ -265,4 +265,71 @@ void main() {
       expect(gradeAverage([(10, 0)]), 0); // invalid max skipped
     });
   });
+
+  group('GPA goal planner', () {
+    test('required term GPA — normal case', () {
+      // prev 3.0 over 30cr, target 3.2, current 15cr:
+      // (3.2*45 - 3.0*30)/15 = (144-90)/15 = 3.6
+      final r = requiredTermGpa(
+          prevGpa: 3.0,
+          prevCredits: 30,
+          targetGpa: 3.2,
+          currentCredits: 15);
+      expect(r, closeTo(3.6, 0.001));
+    });
+
+    test('impossible target + max achievable', () {
+      // prev 2.0 over 60cr, target 3.5, current 15cr:
+      // (3.5*75 - 2.0*60)/15 = (262.5-120)/15 = 9.5 > 4.0
+      final r = requiredTermGpa(
+          prevGpa: 2.0,
+          prevCredits: 60,
+          targetGpa: 3.5,
+          currentCredits: 15);
+      expect(r!, greaterThan(4.0));
+      final max = maxAchievableGpa(
+          prevGpa: 2.0, prevCredits: 60, currentCredits: 15);
+      expect(max, closeTo((2.0 * 60 + 4.0 * 15) / 75, 0.001));
+    });
+
+    test('zero-credit edge cases', () {
+      expect(
+          requiredTermGpa(
+              prevGpa: 3.0,
+              prevCredits: 30,
+              targetGpa: 3.5,
+              currentCredits: 0),
+          isNull);
+      expect(
+          projectedGpa(
+              prevGpa: 3.0,
+              prevCredits: 0,
+              termGpa: 3.5,
+              currentCredits: 0),
+          isNull);
+      expect(
+          maxAchievableGpa(
+              prevGpa: 3.0, prevCredits: 0, currentCredits: 0),
+          0);
+    });
+
+    test('projection — reverse direction', () {
+      // prev 3.0/30cr + term 3.6/15cr -> (90+54)/45 = 3.2
+      final p = projectedGpa(
+          prevGpa: 3.0,
+          prevCredits: 30,
+          termGpa: 3.6,
+          currentCredits: 15);
+      expect(p, closeTo(3.2, 0.001));
+    });
+
+    test('gpa letter mapping', () {
+      expect(gpaLetter(3.9).letter, 'A');
+      expect(gpaLetter(3.9).ar, 'امتياز');
+      expect(gpaLetter(3.2).ar, 'جيد جدًا');
+      expect(gpaLetter(2.5).ar, 'جيد');
+      expect(gpaLetter(1.2).ar, 'مقبول');
+      expect(gpaLetter(0.5).ar, 'ضعيف');
+    });
+  });
 }
