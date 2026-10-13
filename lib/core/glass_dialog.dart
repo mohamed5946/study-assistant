@@ -36,21 +36,22 @@ Future<T?> showGlassDialog<T>(
                   constraints: const BoxConstraints(maxWidth: 420),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(28),
+                    // TEST 2: white gradient (same as bottom sheet) instead of
+                    // blue — diagnosing the yellow double-line artifact.
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: dark
                           ? [
-                              const Color(0xFF24365F)
-                                  .withValues(alpha: 0.97),
-                              const Color(0xFF0F1C3A)
-                                  .withValues(alpha: 0.98),
+                              const Color(0xFF22305A)
+                                  .withValues(alpha: 0.94),
+                              const Color(0xFF101B38)
+                                  .withValues(alpha: 0.96),
                             ]
                           : [
-                              const Color(0xFFDCEEFF)
-                                  .withValues(alpha: 0.96),
-                              const Color(0xFF9CC8F5)
-                                  .withValues(alpha: 0.96),
+                              Colors.white.withValues(alpha: 0.90),
+                              const Color(0xFFEAF3FF)
+                                  .withValues(alpha: 0.90),
                             ],
                     ),
                     border: Border.all(
