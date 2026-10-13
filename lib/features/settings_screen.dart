@@ -13,16 +13,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late TextEditingController _keyC, _baseC, _modelC, _focusC, _breakC, _thrC;
-  bool _obscure = true;
+  late TextEditingController _focusC, _breakC, _thrC;
   bool _testing = false;
 
   @override
   void initState() {
     super.initState();
-    _keyC = TextEditingController(text: Settings.aiKey);
-    _baseC = TextEditingController(text: Settings.aiBaseUrl);
-    _modelC = TextEditingController(text: Settings.aiModel);
     _focusC = TextEditingController(text: '${Settings.focusMin}');
     _breakC = TextEditingController(text: '${Settings.breakMin}');
     _thrC = TextEditingController(text: '${Settings.attendanceThreshold}');
@@ -30,9 +26,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    _keyC.dispose();
-    _baseC.dispose();
-    _modelC.dispose();
     _focusC.dispose();
     _breakC.dispose();
     _thrC.dispose();
@@ -41,7 +34,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isGemini = Settings.aiProvider == 'gemini';
     return Scaffold(
       appBar: AppBar(title: Text(t('settings'))),
       body: AuroraBackground(
@@ -96,108 +88,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            SectionHeader(title: t('aiProvider')),
+            SectionHeader(title: t('aiStatus')),
             GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Row(
                 children: [
-                  SegmentedButton<String>(
-                    segments: [
-                      ButtonSegment(
-                          value: 'gemini', label: Text(t('gemini'))),
-                      ButtonSegment(
-                          value: 'openai',
-                          label: Text(t('openAiCompat'))),
-                    ],
-                    selected: {Settings.aiProvider},
-                    onSelectionChanged: (s) {
-                      Settings.aiProvider = s.first;
-                      if (s.first == 'gemini' &&
-                          (_modelC.text.contains('gpt') ||
-                              _modelC.text.contains('2.0-flash'))) {
-                        _modelC.text = 'gemini-3.8-flash';
-                        Settings.aiModel = _modelC.text;
-                      } else if (s.first == 'openai') {
-                        // pre-fill free Groq defaults (key is never embedded)
-                        if (_baseC.text.trim().isEmpty ||
-                            _baseC.text.contains('openai.com')) {
-                          _baseC.text =
-                              'https://api.groq.com/openai/v1';
-                          Settings.aiBaseUrl = _baseC.text;
-                        }
-                        if (_modelC.text.trim().isEmpty ||
-                            _modelC.text.contains('gemini')) {
-                          _modelC.text = 'openai/gpt-oss-20b';
-                          Settings.aiModel = _modelC.text;
-                        }
-                      }
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _keyC,
-                    obscureText: _obscure,
-                    decoration: InputDecoration(
-                      labelText: t('apiKey'),
-                      prefixIcon:
-                          const Icon(Icons.key_rounded),
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscure
-                            ? Icons.visibility_rounded
-                            : Icons.visibility_off_rounded),
-                        onPressed: () =>
-                            setState(() => _obscure = !_obscure),
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    onChanged: (v) => Settings.aiKey = v.trim(),
+                    child: const Icon(Icons.psychology_rounded,
+                        color: AppColors.primary),
                   ),
-                  const SizedBox(height: 6),
-                  Text(t('keySavedOnDevice'),
-                      style: TextStyle(
-                          fontSize: 12,
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant)),
-                  if (!isGemini) ...[
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _baseC,
-                      decoration: InputDecoration(
-                          labelText: t('baseUrl')),
-                      onChanged: (v) =>
-                          Settings.aiBaseUrl = v.trim(),
-                    ),
-                  ],
-                  const SizedBox(height: 10),
-                  TextField(
-                    controller: _modelC,
-                    decoration:
-                        InputDecoration(labelText: t('model')),
-                    onChanged: (v) =>
-                        Settings.aiModel = v.trim(),
-                  ),
-                  if (!isGemini) ...[
-                    const SizedBox(height: 6),
-                    Text(t('groqHint'),
-                        style: TextStyle(
-                            fontSize: 12,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurfaceVariant)),
-                  ],
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    icon: _testing
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2))
-                        : const Icon(Icons.bolt_rounded),
-                    label: Text(t('testConnection')),
-                    onPressed: _testing ? null : _test,
-                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(t('aiReady'))),
+                  const SizedBox(width: 8),
+                  _testing
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : OutlinedButton.icon(
+                          icon: const Icon(Icons.bolt_rounded, size: 18),
+                          label: Text(t('checkNow')),
+                          onPressed: _test,
+                        ),
                 ],
               ),
             ),
@@ -287,20 +203,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _test() async {
-    if (_keyC.text.trim().isEmpty) {
-      showSnack(context, t('noApiKeyMsg'), error: true);
-      return;
-    }
     setState(() => _testing = true);
     String msg;
     bool isError;
     try {
       final p = AiService.current();
-      final reply = await p!.chat(
-          [AiMsg('user', Settings.lang == 'ar' ? 'قول: تمام' : 'Say: ok')],
-          system: '');
-      msg = reply.isNotEmpty ? t('connectionOk') : t('connectionFail');
-      isError = reply.isEmpty;
+      if (p == null) {
+        msg = t('aiNotConfigured');
+        isError = true;
+      } else {
+        final reply = await p.chat(
+            [AiMsg('user', Settings.lang == 'ar' ? 'قول: تمام' : 'Say: ok')],
+            system: '');
+        msg = reply.isNotEmpty ? t('connectionOk') : t('connectionFail');
+        isError = reply.isEmpty;
+      }
     } catch (e) {
       // Show the REAL error (status code / API message / network detail)
       // under the friendly prefix — this is the diagnostic surface.

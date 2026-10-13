@@ -11,15 +11,11 @@ import 'core/widget_service.dart';
 const _bundledGroqKey =
     String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
 
-/// On launch of a build that bundles a Groq key, auto-configure the
-/// OpenAI-compatible provider when the saved key is empty OR is a stale
-/// Google (Gemini) key left over from v1 — a Gemini key can never work with
-/// the OpenAI-compatible provider, so that is always a misconfiguration.
-/// A user-typed non-Google key is never overwritten. Idempotent.
+/// The bundled Groq key (injected at build time via --dart-define from the
+/// CI secret) is the single source of AI config — there is no key UI.
+/// Applied on every launch so the assistant always just works.
 Future<void> _applyBundledGroqKey() async {
   if (_bundledGroqKey.isEmpty) return;
-  final savedKey = Settings.aiKey.trim();
-  if (savedKey.isNotEmpty && !savedKey.startsWith('AIza')) return;
   Settings.aiProvider = 'openai';
   Settings.aiBaseUrl = 'https://api.groq.com/openai/v1';
   Settings.aiModel = 'openai/gpt-oss-20b';

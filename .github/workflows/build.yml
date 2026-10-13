@@ -54,6 +54,14 @@ jobs:
       - name: Run unit tests
         run: flutter test
 
+      - name: Verify AI key present
+        run: |
+          if [ -z "${{ secrets.GROQ_API_KEY }}" ]; then
+            echo "ERROR: GROQ_API_KEY secret is empty — refusing to ship a build with dead AI."
+            exit 1
+          fi
+          echo "AI key present (length hidden)."
+
       - name: Build release APK
         run: flutter build apk --release --dart-define=GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}
 
