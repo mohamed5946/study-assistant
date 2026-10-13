@@ -19,17 +19,25 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Some plugins compile their Kotlin at JVM target 1.8 while inlining
-// dependencies built for newer JVMs. Force JVM 17 (matching the app and
-// the Java toolchain) for every subproject module so release compilation
-// succeeds.
-subprojects {
-    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()
+// home_widget compiles its Kotlin at JVM target 1.8 but inlines a
+// dependency built for JVM 11+, which fails release compilation.
+// Raise this module (and only this one) to JVM 11 after all projects
+// are evaluated, so its own 1.8 defaults don't win.
+gradle.projectsEvaluated {
+    val hw = project(":home_widget")
+    hw.tasks
+        .withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>()
         .configureEach {
             compilerOptions {
                 jvmTarget.set(
-                    org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                    org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
             }
+        }
+    hw.tasks
+        .withType<org.gradle.api.tasks.compile.JavaCompile>()
+        .configureEach {
+            sourceCompatibility = "11"
+            targetCompatibility = "11"
         }
 }
 
