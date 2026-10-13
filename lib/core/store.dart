@@ -59,6 +59,64 @@ class DB {
     if (id.isEmpty) return fallback;
     return subjects.get(id)?.colorValue ?? fallback;
   }
+  /// Deletes a subject and every record that references it (timetable
+  /// entries + their class reminders, deadlines + their reminders, PDF
+  /// documents + files, flashcards, exams + attempts, attendance, grades,
+  /// notes, pomodoro sessions). Prevents orphaned records that would show
+  /// broken "—" names elsewhere in the app.
+  static Future<void> deleteSubjectCascade(String sid) async {
+    Future<void> deleteWhere<T>(Box<T> box, bool Function(T) match) async {
+      final keys = box.keys
+          .where((k) => match(box.get(k) as T))
+          .toList();
+      for (final k in keys) {
+        await box.delete(k);
+      }
+    }
+
+    final classKeys = timetable.keys
+        .where((k) => (timetable.get(k) as TimetableEntry).subjectId == sid)
+        .toList();
+    for (final k in classKeys) {
+      final e = timetable.get(k) as TimetableEntry;
+      await Notify.cancel('class_${e.id}');
+      await timetable.delete(k);
+    }
+    final deadlineKeys = deadlines.keys
+        .where((k) => (deadlines.get(k) as Deadline).subjectId == sid)
+        .toList();
+    for (final k in deadlineKeys) {
+      final d = deadlines.get(k) as Deadline;
+      await Notify.cancel('deadline_${d.id}');
+      await deadlines.delete(k);
+    }
+    final docKeys = documents.keys
+        .where((k) => (documents.get(k) as StudyDocument).subjectId == sid)
+        .toList();
+    for (final k in docKeys) {
+      final doc = documents.get(k) as StudyDocument;
+      try {
+        await File(doc.path).delete();
+      } catch (_) {}
+      await documents.delete(k);
+    }
+    await deleteWhere<Flashcard>(
+        flashcards, (f) => f.subjectId == sid);
+    final examIds = exams.values
+        .where((e) => e.subjectId == sid)
+        .map((e) => e.id)
+        .toSet();
+    await deleteWhere<ExamAttempt>(
+        attempts, (a) => examIds.contains(a.examId));
+    await deleteWhere<Exam>(exams, (e) => e.subjectId == sid);
+    await deleteWhere<AttendanceRecord>(
+        attendance, (a) => a.subjectId == sid);
+    await deleteWhere<GradeRecord>(grades, (g) => g.subjectId == sid);
+    await deleteWhere<Note>(notes, (n) => n.subjectId == sid);
+    await deleteWhere<PomodoroSession>(
+        pomodoro, (p) => p.subjectId == sid);
+    await subjects.delete(sid);
+  }
 }
 
 /// App settings stored in the kv box (on-device only).
@@ -118,62 +176,4 @@ class Settings {
       DB.kv.get('profilePhoto', defaultValue: '') as String;
   static set profilePhoto(String v) => DB.kv.put('profilePhoto', v);
 
-  /// Deletes a subject and every record that references it (timetable
-  /// entries + their class reminders, deadlines + their reminders, PDF
-  /// documents + files, flashcards, exams + attempts, attendance, grades,
-  /// notes, pomodoro sessions). Prevents orphaned records that would show
-  /// broken "—" names elsewhere in the app.
-  static Future<void> deleteSubjectCascade(String sid) async {
-    Future<void> deleteWhere<T>(Box<T> box, bool Function(T) match) async {
-      final keys = box.keys
-          .where((k) => match(box.get(k) as T))
-          .toList();
-      for (final k in keys) {
-        await box.delete(k);
-      }
-    }
-
-    final classKeys = timetable.keys
-        .where((k) => (timetable.get(k) as TimetableEntry).subjectId == sid)
-        .toList();
-    for (final k in classKeys) {
-      final e = timetable.get(k) as TimetableEntry;
-      await Notify.cancel('class_${e.id}');
-      await timetable.delete(k);
-    }
-    final deadlineKeys = deadlines.keys
-        .where((k) => (deadlines.get(k) as Deadline).subjectId == sid)
-        .toList();
-    for (final k in deadlineKeys) {
-      final d = deadlines.get(k) as Deadline;
-      await Notify.cancel('deadline_${d.id}');
-      await deadlines.delete(k);
-    }
-    final docKeys = documents.keys
-        .where((k) => (documents.get(k) as StudyDocument).subjectId == sid)
-        .toList();
-    for (final k in docKeys) {
-      final doc = documents.get(k) as StudyDocument;
-      try {
-        await File(doc.path).delete();
-      } catch (_) {}
-      await documents.delete(k);
-    }
-    await deleteWhere<Flashcard>(
-        flashcards, (f) => f.subjectId == sid);
-    final examIds = exams.values
-        .where((e) => e.subjectId == sid)
-        .map((e) => e.id)
-        .toSet();
-    await deleteWhere<ExamAttempt>(
-        attempts, (a) => examIds.contains(a.examId));
-    await deleteWhere<Exam>(exams, (e) => e.subjectId == sid);
-    await deleteWhere<AttendanceRecord>(
-        attendance, (a) => a.subjectId == sid);
-    await deleteWhere<GradeRecord>(grades, (g) => g.subjectId == sid);
-    await deleteWhere<Note>(notes, (n) => n.subjectId == sid);
-    await deleteWhere<PomodoroSession>(
-        pomodoro, (p) => p.subjectId == sid);
-    await subjects.delete(sid);
-  }
 }

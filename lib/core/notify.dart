@@ -17,7 +17,7 @@ class Notify {
     }
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _plugin.initialize(
-      const InitializationSettings(android: android),
+      settings: const InitializationSettings(android: android),
       onDidReceiveNotificationResponse: (_) {},
     );
     const channel = AndroidNotificationChannel(
@@ -77,11 +77,11 @@ class Notify {
     }
     try {
       await _plugin.zonedSchedule(
-        idFor(key),
-        title,
-        body,
-        scheduled,
-        const NotificationDetails(
+        id: idFor(key),
+        title: title,
+        body: body,
+        scheduledDate: scheduled,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'study_reminders',
             'Study reminders',
@@ -94,11 +94,11 @@ class Notify {
     } catch (_) {
       // Fallback without exact alarms.
       await _plugin.zonedSchedule(
-        idFor(key),
-        title,
-        body,
-        scheduled,
-        const NotificationDetails(
+        id: idFor(key),
+        title: title,
+        body: body,
+        scheduledDate: scheduled,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'study_reminders',
             'Study reminders',
@@ -123,11 +123,11 @@ class Notify {
     if (when.isBefore(tz.TZDateTime.now(tz.local))) return;
     try {
       await _plugin.zonedSchedule(
-        idFor(key),
-        title,
-        body,
-        when,
-        const NotificationDetails(
+        id: idFor(key),
+        title: title,
+        body: body,
+        scheduledDate: when,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'study_reminders',
             'Study reminders',
@@ -138,11 +138,11 @@ class Notify {
       );
     } catch (_) {
       await _plugin.zonedSchedule(
-        idFor(key),
-        title,
-        body,
-        when,
-        const NotificationDetails(
+        id: idFor(key),
+        title: title,
+        body: body,
+        scheduledDate: when,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             'study_reminders',
             'Study reminders',
@@ -156,6 +156,6 @@ class Notify {
 
   static Future<void> cancel(String key) async {
     if (!_ready) return;
-    await _plugin.cancel(idFor(key));
+    await _plugin.cancel(id: idFor(key));
   }
 }

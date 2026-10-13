@@ -501,8 +501,8 @@ class SubjectsScreen extends StatelessWidget {
       }
       return;
     }
-    final chRaw = double.tryParse(chC.text.trim()) ?? 3;
-    final ch = chRaw > 0 ? chRaw : 3;
+    final chRaw = double.tryParse(chC.text.trim()) ?? 3.0;
+    final ch = chRaw > 0 ? chRaw : 3.0;
     if (s == null) {
       final id = newId();
       await DB.subjects.put(
