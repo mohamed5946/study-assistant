@@ -1,6 +1,51 @@
 import 'dart:convert';
+import 'package:cronet_http/cronet_http.dart';
 import 'package:http/http.dart' as http;
 import 'store.dart';
+
+/// Single shared HTTP client for ALL AI API calls.
+///
+/// Routes through Chromium's network stack (Cronet — the same engine Chrome
+/// uses) instead of dart:io's HttpClient. Reason (verified on-device):
+/// the system DNS resolver failed every AI call with
+/// "Failed host lookup: 'api.groq.com'" while Chrome on the SAME phone
+/// resolved and opened https://api.groq.com fine — even with WARP on and
+/// after a phone restart. Cronet uses Chromium's own host resolver, so the
+/// app now resolves exactly like Chrome does.
+///
+/// If the Cronet engine fails to initialize, falls back to the default
+/// client; failures still surface with real diagnostics (never silent).
+class AiHttp {
+  AiHttp._();
+  static http.Client? _shared;
+
+  /// Test hook: inject a mock client. When set, [client] returns it.
+  static set testClient(http.Client? c) => _shared = c;
+
+  /// True when the shared client is Cronet-backed.
+  static bool get isCronet => _shared is CronetClient;
+
+  static Future<http.Client> client() async {
+    final existing = _shared;
+    if (existing != null) return existing;
+    final c = await _buildClient();
+    _shared = c;
+    return c;
+  }
+
+  static Future<http.Client> _buildClient() async {
+    try {
+      final engine = CronetEngine.build(
+        cacheMode: CacheMode.memory,
+        cacheMaxSize: 2 * 1024 * 1024,
+        userAgent: 'StudyAssistant/2.2',
+      );
+      return CronetClient.fromCronetEngine(engine, closeEngine: true);
+    } catch (_) {
+      return http.Client();
+    }
+  }
+}
 
 /// Provider-neutral AI interface. UI never talks to a vendor directly.
 abstract class AiProvider {
@@ -56,7 +101,8 @@ class GeminiProvider implements AiProvider {
     for (var attempt = 0; ; attempt++) {
       http.Response res;
       try {
-        res = await http
+        // All AI traffic goes through the shared Cronet-backed client.
+        res = await (await AiHttp.client())
             .post(_uri(), headers: _headers, body: jsonEncode(body))
             .timeout(const Duration(seconds: 90));
       } catch (e) {
@@ -200,7 +246,8 @@ class OpenAiCompatProvider implements AiProvider {
       msgs.add({'role': m.role, 'content': m.text});
     }
     final url = Uri.parse('${baseUrl.replaceAll(RegExp(r'/+$'), '')}/chat/completions');
-    final res = await http
+    // All AI traffic goes through the shared Cronet-backed client.
+    final res = await (await AiHttp.client())
         .post(url,
             headers: {
               'Content-Type': 'application/json',
