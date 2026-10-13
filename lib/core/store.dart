@@ -16,6 +16,7 @@ class DB {
   static late Box<GradeRecord> grades;
   static late Box<Note> notes;
   static late Box<PomodoroSession> pomodoro;
+  static late Box<TermGrade> termGrades;
   static late Box kv; // settings key-value
 
   static Future<void> init() async {
@@ -33,6 +34,7 @@ class DB {
     grades = await Hive.openBox<GradeRecord>('grades');
     notes = await Hive.openBox<Note>('notes');
     pomodoro = await Hive.openBox<PomodoroSession>('pomodoro');
+    termGrades = await Hive.openBox<TermGrade>('termGrades');
     kv = await Hive.openBox('kv');
   }
 
@@ -71,12 +73,21 @@ class Settings {
   static set aiKey(String v) => DB.kv.put('aiKey', v);
 
   static String get aiBaseUrl =>
-      DB.kv.get('aiBaseUrl', defaultValue: 'https://api.openai.com/v1') as String;
+      DB.kv.get('aiBaseUrl', defaultValue: _defaultBaseUrl) as String;
   static set aiBaseUrl(String v) => DB.kv.put('aiBaseUrl', v);
 
   static String get aiModel =>
-      DB.kv.get('aiModel', defaultValue: 'gemini-3.8-flash') as String;
+      DB.kv.get('aiModel', defaultValue: _defaultModel) as String;
   static set aiModel(String v) => DB.kv.put('aiModel', v);
+
+  /// Free Groq defaults are pre-filled when the OpenAI-compatible
+  /// provider is selected (no key is ever embedded — the user pastes his own).
+  static String get _defaultBaseUrl => aiProvider == 'openai'
+      ? 'https://api.groq.com/openai/v1'
+      : 'https://api.openai.com/v1';
+  static String get _defaultModel => aiProvider == 'openai'
+      ? 'openai/gpt-oss-20b'
+      : 'gemini-3.8-flash';
 
   static int get focusMin => DB.kv.get('focusMin', defaultValue: 25) as int;
   static set focusMin(int v) => DB.kv.put('focusMin', v);
@@ -90,4 +101,25 @@ class Settings {
       DB.kv.put('attendanceThreshold', v);
 
   static bool get hasAiKey => aiKey.trim().isNotEmpty;
+
+  // ---- Profile (local only) ----
+  static String get profileName =>
+      DB.kv.get('profileName', defaultValue: '') as String;
+  static set profileName(String v) => DB.kv.put('profileName', v);
+
+  static String get university =>
+      DB.kv.get('university', defaultValue: '') as String;
+  static set university(String v) => DB.kv.put('university', v);
+
+  static String get faculty =>
+      DB.kv.get('faculty', defaultValue: '') as String;
+  static set faculty(String v) => DB.kv.put('faculty', v);
+
+  static int get academicYear =>
+      DB.kv.get('academicYear', defaultValue: 1) as int;
+  static set academicYear(int v) => DB.kv.put('academicYear', v);
+
+  static String get profilePhoto =>
+      DB.kv.get('profilePhoto', defaultValue: '') as String;
+  static set profilePhoto(String v) => DB.kv.put('profilePhoto', v);
 }

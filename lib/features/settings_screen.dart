@@ -117,6 +117,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               _modelC.text.contains('2.0-flash'))) {
                         _modelC.text = 'gemini-3.8-flash';
                         Settings.aiModel = _modelC.text;
+                      } else if (s.first == 'openai') {
+                        // pre-fill free Groq defaults (key is never embedded)
+                        if (_baseC.text.trim().isEmpty ||
+                            _baseC.text.contains('openai.com')) {
+                          _baseC.text =
+                              'https://api.groq.com/openai/v1';
+                          Settings.aiBaseUrl = _baseC.text;
+                        }
+                        if (_modelC.text.trim().isEmpty ||
+                            _modelC.text.contains('gemini')) {
+                          _modelC.text = 'openai/gpt-oss-20b';
+                          Settings.aiModel = _modelC.text;
+                        }
                       }
                       setState(() {});
                     },
@@ -164,6 +177,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onChanged: (v) =>
                         Settings.aiModel = v.trim(),
                   ),
+                  if (!isGemini) ...[
+                    const SizedBox(height: 6),
+                    Text(t('groqHint'),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant)),
+                  ],
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
                     icon: _testing

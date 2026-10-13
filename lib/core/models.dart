@@ -264,4 +264,32 @@ void registerAdapters() {
   Hive.registerAdapter(GradeRecordAdapter());
   Hive.registerAdapter(NoteAdapter());
   Hive.registerAdapter(PomodoroSessionAdapter());
+  Hive.registerAdapter(TermGradeAdapter());
+}
+
+/// One subject grade inside a (year, term) of the grade history.
+class TermGrade {
+  final String id;
+  final int year; // 1..7
+  final int term; // 1 | 2
+  String subject;
+  double grade;
+  double maxGrade;
+  TermGrade({required this.id, required this.year, required this.term,
+    required this.subject, required this.grade, this.maxGrade = 100});
+
+  double get pct => maxGrade <= 0 ? 0 : (grade / maxGrade * 100);
+}
+
+class TermGradeAdapter extends TypeAdapter<TermGrade> {
+  @override final int typeId = 12;
+  @override TermGrade read(BinaryReader r) => TermGrade(
+    id: r.readString(), year: r.readInt(), term: r.readInt(),
+    subject: r.readString(), grade: r.readDouble(),
+    maxGrade: r.readDouble());
+  @override void write(BinaryWriter w, TermGrade o) {
+    w.writeString(o.id); w.writeInt(o.year); w.writeInt(o.term);
+    w.writeString(o.subject); w.writeDouble(o.grade);
+    w.writeDouble(o.maxGrade);
+  }
 }

@@ -8,6 +8,9 @@ import 'attendance_screen.dart';
 import 'gpa_screen.dart';
 import 'notes_screen.dart';
 import 'pomodoro_screen.dart';
+import 'planner_screen.dart';
+import 'profile_screen.dart';
+import 'scan_screen.dart';
 import 'settings_screen.dart';
 
 class MoreScreen extends StatefulWidget {
@@ -43,18 +46,23 @@ class _MoreScreenState extends State<MoreScreen> {
   }
 
   static final _pages = <String, Widget>{
+    'profile': const ProfileScreen(),
     'subjects': const SubjectsScreen(),
     'deadlines': const DeadlinesScreen(),
     'attendance': const AttendanceScreen(),
     'gpa': const GpaScreen(),
     'notes': const NotesScreen(),
     'pomodoro': const PomodoroScreen(),
+    'planner': const PlannerScreen(),
+    'scan': const ScanScreen(),
     'settings': const SettingsScreen(),
   };
 
   @override
   Widget build(BuildContext context) {
     final items = [
+      _Item(t('profile'), Icons.person_rounded, 'profile',
+          const [AppColors.primary, AppColors.primaryDark]),
       _Item(t('subjects'), Icons.book_rounded, 'subjects',
           const [AppColors.primary, AppColors.secondary]),
       _Item(t('deadlines'), Icons.event_rounded, 'deadlines',
@@ -67,6 +75,10 @@ class _MoreScreenState extends State<MoreScreen> {
           const [AppColors.violet, AppColors.secondary]),
       _Item(t('pomodoro'), Icons.timer_rounded, 'pomodoro',
           const [AppColors.primary, AppColors.violet]),
+      _Item(t('studyPlanner'), Icons.calendar_month_rounded, 'planner',
+          const [AppColors.primaryDark, AppColors.secondary]),
+      _Item(t('scanQuestion'), Icons.document_scanner_rounded, 'scan',
+          const [AppColors.warning, AppColors.secondary]),
       _Item(t('settings'), Icons.settings_rounded, 'settings',
           const [Color(0xFF7890AD), Color(0xFF546E7A)]),
     ];

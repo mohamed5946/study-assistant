@@ -7,7 +7,12 @@ import '../core/nav.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'library_screen.dart';
 
+/// AI Assistant chat — light design per mockup:
+/// header back+title+menu, pale user bubbles right, AI bubbles left with
+/// blue avatar, suggestion chips, input bar with + button, Deep Think
+/// dropdown and blue send button.
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
   @override
@@ -18,6 +23,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   bool _sending = false;
+  bool _deepThink = false;
 
   @override
   void dispose() {
@@ -40,23 +46,15 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () => TabNav.go(0),
+        ),
         title: Text(t('aiChat')),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep_rounded),
-            tooltip: t('clearChat'),
-            onPressed: () async {
-              if (await confirmDelete(context, message: t('clearChat'))) {
-                await DB.chat.clear();
-                if (context.mounted) {
-                  showSnack(context, t('chatCleared'));
-                }
-              }
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_rounded),
-            onPressed: () => TabNav.go(4, more: 'settings'),
+            icon: const Icon(Icons.more_vert_rounded),
+            onPressed: _menu,
           ),
         ],
       ),
@@ -75,6 +73,55 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
+  Future<void> _menu() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.psychology_rounded,
+                  color: AppColors.primary),
+              title: Text(Settings.hasAiKey
+                  ? '${t('aiProvider')}: ${Settings.aiProvider}'
+                  : t('noApiKey')),
+              subtitle:
+                  Settings.hasAiKey ? Text(Settings.aiModel) : null,
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings_rounded,
+                  color: AppColors.lightMuted),
+              title: Text(t('openSettings')),
+              onTap: () {
+                Navigator.pop(context);
+                TabNav.go(4, more: 'settings');
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.delete_sweep_rounded, color: AppColors.error),
+              title: Text(t('clearChat'),
+                  style: const TextStyle(color: AppColors.error)),
+              onTap: () async {
+                Navigator.pop(context);
+                final confirmed = await confirmDelete(context,
+                    message: t('clearChat'));
+                if (confirmed) {
+                  await DB.chat.clear();
+                  if (mounted) showSnack(context, t('chatCleared'));
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _noKey(BuildContext context) {
     return Center(
       child: SingleChildScrollView(
@@ -85,18 +132,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
             Container(
               width: 90,
               height: 90,
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: LinearGradient(
-                    colors: [AppColors.violet, AppColors.primary]),
+                gradient: const LinearGradient(
+                    colors: [AppColors.primary, AppColors.secondary]),
+                boxShadow: [
+                  BoxShadow(
+                      color:
+                          AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 24)
+                ],
               ),
               child: const Icon(Icons.auto_awesome_rounded,
                   color: Colors.white, size: 44),
             ),
             const SizedBox(height: 18),
             Text(t('noApiKey'),
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 20)),
             const SizedBox(height: 8),
             Text(t('noApiKeyMsg'),
                 textAlign: TextAlign.center,
@@ -119,7 +172,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(t('freeKeySteps'),
-                      style: const TextStyle(fontSize: 13, height: 1.7)),
+                      style:
+                          const TextStyle(fontSize: 13, height: 1.7)),
                 ],
               ),
             ),
@@ -140,35 +194,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
       ..sort((a, b) => a.createdMs.compareTo(b.createdMs));
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-          child: Row(
-            children: [
-              const Icon(Icons.info_outline_rounded,
-                  size: 14, color: AppColors.warning),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(t('aiDisclaimer'),
-                    style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant)),
-              ),
-            ],
-          ),
-        ),
         Expanded(
           child: msgs.isEmpty
-              ? Center(
-                  child: Text(t('askAnything'),
-                      style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant)))
+              ? _emptyState()
               : ListView.builder(
                   controller: _scroll,
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                   itemCount: msgs.length + (_sending ? 1 : 0),
                   itemBuilder: (_, i) {
                     if (i == msgs.length) return _thinkingBubble();
@@ -181,65 +212,210 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(colors: [
+                  AppColors.primary,
+                  AppColors.primaryDark
+                ]),
+                boxShadow: [
+                  BoxShadow(
+                      color:
+                          AppColors.primary.withValues(alpha: 0.35),
+                      blurRadius: 20)
+                ],
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: Colors.white, size: 36),
+            ),
+            const SizedBox(height: 16),
+            Text(t('aiChat'),
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 20)),
+            const SizedBox(height: 6),
+            Text(t('aiDisclaimer'),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 13)),
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                _suggestion(t('studyTipsExams')),
+                _suggestion(t('helpCalculus')),
+                _suggestion(t('explainTopic')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _suggestion(String label) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        _input.text = label;
+        _send();
+      },
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.25)),
+          boxShadow: [
+            BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.06),
+                blurRadius: 8,
+                offset: const Offset(0, 3)),
+          ],
+        ),
+        child: Text(label,
+            style: const TextStyle(
+                color: AppColors.primaryDark,
+                fontWeight: FontWeight.w600,
+                fontSize: 13)),
+      ),
+    );
+  }
+
   Widget _thinkingBubble() {
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context)
-              .colorScheme
-              .surfaceContainerHighest
-              .withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const SizedBox(width: 120, child: StudyLoadingBar()),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _aiAvatar(),
+          const SizedBox(width: 8),
+          Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                    color:
+                        AppColors.primary.withValues(alpha: 0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4)),
+              ],
+            ),
+            child: const SizedBox(
+                width: 110, child: StudyLoadingBar()),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _aiAvatar() {
+    return Container(
+      width: 34,
+      height: 34,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark]),
+      ),
+      child: const Icon(Icons.auto_awesome_rounded,
+          color: Colors.white, size: 18),
     );
   }
 
   Widget _bubble(ChatMessage m) {
     final user = m.role == 0;
-    return Align(
-      alignment:
-          user ? AlignmentDirectional.centerEnd : AlignmentDirectional.centerStart,
-      child: GestureDetector(
-        onLongPress: () {
-          Clipboard.setData(ClipboardData(text: m.text));
-          showSnack(context, t('copied'));
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.82),
-          decoration: BoxDecoration(
-            gradient: user
-                ? const LinearGradient(
-                    colors: [AppColors.primary, AppColors.violet])
-                : null,
-            color: user
-                ? null
-                : Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(18),
-          ),
-          child: Text(
-            m.text,
-            style: TextStyle(
-              color: user
-                  ? Colors.white
-                  : Theme.of(context).colorScheme.onSurface,
-              fontSize: 14.5,
-              height: 1.6,
+    if (user) {
+      return Align(
+        alignment: AlignmentDirectional.centerEnd,
+        child: GestureDetector(
+          onLongPress: () {
+            Clipboard.setData(ClipboardData(text: m.text));
+            showSnack(context, t('copied'));
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 16, vertical: 12),
+            constraints: BoxConstraints(
+                maxWidth:
+                    MediaQuery.of(context).size.width * 0.78),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(18),
+                bottomRight: Radius.circular(4),
+              ),
             ),
+            child: Text(m.text,
+                style: const TextStyle(
+                    fontSize: 14.5, height: 1.6)),
           ),
         ),
+      );
+    }
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _aiAvatar(),
+          const SizedBox(width: 8),
+          Flexible(
+            child: GestureDetector(
+              onLongPress: () {
+                Clipboard.setData(ClipboardData(text: m.text));
+                showSnack(context, t('copied'));
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(4),
+                    topRight: Radius.circular(18),
+                    bottomLeft: Radius.circular(18),
+                    bottomRight: Radius.circular(18),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                        color: AppColors.primary
+                            .withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: SelectableText(m.text,
+                    style: const TextStyle(
+                        fontSize: 14.5, height: 1.6)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -249,40 +425,134 @@ class _AiChatScreenState extends State<AiChatScreen> {
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _input,
-                minLines: 1,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: t('askAnything'),
-                  suffixIcon: _sending
-                      ? const Padding(
-                          padding: EdgeInsets.all(14),
-                          child: SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2)),
-                        )
-                      : null,
+            // Deep Think dropdown row
+            Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () =>
+                      setState(() => _deepThink = !_deepThink),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: _deepThink
+                          ? AppColors.primary.withValues(alpha: 0.14)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.25)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                            _deepThink
+                                ? Icons.psychology_rounded
+                                : Icons.psychology_outlined,
+                            size: 16,
+                            color: AppColors.primaryDark),
+                        const SizedBox(width: 6),
+                        Text(t('deepThink'),
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primaryDark)),
+                        Icon(
+                            _deepThink
+                                ? Icons.check_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 16,
+                            color: AppColors.primaryDark),
+                      ],
+                    ),
+                  ),
                 ),
-                onSubmitted: (_) => _send(),
-              ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                    colors: [AppColors.primary, AppColors.violet]),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white),
-                onPressed: _sending ? null : _send,
-              ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  decoration: const BoxDecoration(
+                      shape: BoxShape.circle, color: Colors.white),
+                  child: IconButton(
+                    icon: const Icon(Icons.add_rounded,
+                        color: AppColors.primaryDark),
+                    tooltip: t('askAboutPdf'),
+                    onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) =>
+                                const LibraryScreen())),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                            color: AppColors.primary
+                                .withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: TextField(
+                      controller: _input,
+                      minLines: 1,
+                      maxLines: 4,
+                      decoration: InputDecoration(
+                        hintText: t('askAnything'),
+                        border: InputBorder.none,
+                        contentPadding:
+                            const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 12),
+                        suffixIcon: _sending
+                            ? const Padding(
+                                padding: EdgeInsets.all(14),
+                                child: SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child:
+                                        CircularProgressIndicator(
+                                            strokeWidth: 2)),
+                              )
+                            : null,
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(colors: [
+                      AppColors.primary,
+                      AppColors.primaryDark
+                    ]),
+                    boxShadow: [
+                      BoxShadow(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.4),
+                          blurRadius: 12)
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_upward_rounded,
+                        color: Colors.white),
+                    onPressed: _sending ? null : _send,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -305,12 +575,18 @@ class _AiChatScreenState extends State<AiChatScreen> {
     try {
       final history = DB.chat.values.toList()
         ..sort((a, b) => a.createdMs.compareTo(b.createdMs));
+      final sys = AiService.systemPrompt() +
+          (_deepThink
+              ? (Settings.lang == 'ar'
+                  ? '\nوضع التفكير العميق: فكّر بعمق خطوة بخطوة واشرح استدلالك قبل الإجابة النهائية.'
+                  : '\nDeep Think mode: reason deeply step by step and explain your reasoning before the final answer.')
+              : '');
       final reply = await provider.chat(
         [
           for (final m in history.take(20))
             AiMsg(m.role == 0 ? 'user' : 'assistant', m.text),
         ],
-        system: AiService.systemPrompt(),
+        system: sys,
       );
       await DB.chat.put(aId,
           ChatMessage(id: aId, role: 1, text: reply, createdMs: now + 1));

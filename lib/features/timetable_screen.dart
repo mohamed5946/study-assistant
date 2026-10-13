@@ -6,6 +6,8 @@ import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/widget_service.dart';
+import 'timetable_import_screen.dart';
 
 const _dayKeys = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -21,7 +23,20 @@ class _TimetableScreenState extends State<TimetableScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(t('timetable'))),
+      appBar: AppBar(
+        title: Text(t('timetable')),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.auto_awesome_rounded),
+            tooltip: t('importTimetable'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const TimetableImportScreen()),
+            ),
+          ),
+        ],
+      ),
       body: AuroraBackground(
         child: Column(
           children: [
@@ -163,6 +178,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 if (await confirmDelete(context)) {
                   await Notify.cancel('class_${e.id}');
                   await DB.timetable.delete(e.id);
+                  WidgetService.update();
                 }
               },
             ),
@@ -347,6 +363,7 @@ class _TimetableScreenState extends State<TimetableScreen> {
       reminderMin: reminder,
     );
     await DB.timetable.put(id, entry);
+    WidgetService.update();
     // (re)schedule reminder
     await Notify.cancel('class_$id');
     if (reminder >= 0) {

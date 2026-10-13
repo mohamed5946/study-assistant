@@ -66,8 +66,9 @@ class QuizQ {
   final List<String> options;
   final String answer; // exact correct text (or 'true'/'false')
   final String explanation;
+  final int page; // PDF page where the question appears (0 = unknown)
   QuizQ({required this.q, required this.type, this.options = const [],
-    required this.answer, this.explanation = ''});
+    required this.answer, this.explanation = '', this.page = 0});
 
   factory QuizQ.fromJson(Map<String, dynamic> j) => QuizQ(
     q: '${j['q'] ?? ''}',
@@ -75,11 +76,12 @@ class QuizQ {
     options: ((j['options'] as List?) ?? []).map((e) => '$e').toList(),
     answer: '${j['answer'] ?? ''}',
     explanation: '${j['explanation'] ?? ''}',
+    page: (j['page'] as num?)?.toInt() ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
     'q': q, 'type': type, 'options': options,
-    'answer': answer, 'explanation': explanation,
+    'answer': answer, 'explanation': explanation, 'page': page,
   };
 }
 
@@ -140,4 +142,18 @@ String countdownParts(int dueMs, int nowMs, String Function(String) tr) {
   if (hours >= 1) return '$hours ${tr('hoursLeft')}';
   final mins = max(1, diff ~/ (60 * 1000));
   return '$mins ${tr('minutes')}';
+}
+
+/// Average of grade entries as a percentage (0..100).
+/// Each entry is (grade, maxGrade); empty list -> 0.
+double gradeAverage(List<(double, double)> entries) {
+  if (entries.isEmpty) return 0;
+  var sum = 0.0;
+  var n = 0;
+  for (final e in entries) {
+    if (e.$2 <= 0) continue;
+    sum += e.$1 / e.$2 * 100;
+    n++;
+  }
+  return n == 0 ? 0 : sum / n;
 }

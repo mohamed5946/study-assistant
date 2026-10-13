@@ -1,29 +1,33 @@
 import 'package:flutter/material.dart';
 
 /// Liquid Glass design tokens for Study Assistant.
+/// Masculine light theme: cool blue-gray background, confident blue primary,
+// teal secondary. Light and airy, sporty — no pastel purple.
 class AppColors {
-  // Brand gradient accents (from the mockups)
-  static const primary = Color(0xFF3E7BFA);
-  static const secondary = Color(0xFF56D6E8);
-  static const violet = Color(0xFF8C7CFF);
-  static const pink = Color(0xFFFF6B9D);
+  // Brand accents
+  static const primary = Color(0xFF0284C7); // confident blue
+  static const primaryDark = Color(0xFF0369A1); // deep blue
+  static const secondary = Color(0xFF0D9488); // teal
+  // Legacy names kept for gradient call-sites; recolored to blue family
+  static const violet = Color(0xFF0369A1); // deep blue
+  static const pink = Color(0xFF0EA5E9); // sky blue
 
-  static const success = Color(0xFF34C759);
-  static const warning = Color(0xFFFFB020);
-  static const error = Color(0xFFFF5A5A);
+  static const success = Color(0xFF16A34A);
+  static const warning = Color(0xFFF59E0B);
+  static const error = Color(0xFFDC2626);
 
-  // Light
-  static const lightBg = Color(0xFFF4F7FC);
-  static const lightText = Color(0xFF172B4D);
-  static const lightMuted = Color(0xFF7890AD);
-  // Dark (deep blue glass like the mockups)
-  static const darkBg = Color(0xFF0E1B33);
-  static const darkText = Color(0xFFF2F6FF);
-  static const darkMuted = Color(0xFF8FA3C7);
+  // Light (default, masculine airy)
+  static const lightBg = Color(0xFFEEF4FA);
+  static const lightText = Color(0xFF0F172A);
+  static const lightMuted = Color(0xFF64748B);
+  // Dark slate variant
+  static const darkBg = Color(0xFF0C1628);
+  static const darkText = Color(0xFFF1F5F9);
+  static const darkMuted = Color(0xFF94A3B8);
 
   static const subjectPalette = <int>[
-    0xFF3E7BFA, 0xFF8C7CFF, 0xFF56D6E8, 0xFFFF6B9D, 0xFFFFB020, 0xFF34C759,
-    0xFFFF5A5A, 0xFF00B8A9, 0xFFFF8A5C, 0xFFB388FF,
+    0xFF0284C7, 0xFF0D9488, 0xFF0369A1, 0xFF0EA5E9, 0xFF475569, 0xFF16A34A,
+    0xFFF59E0B, 0xFF0891B2, 0xFF4F46E5, 0xFF64748B,
   ];
 }
 
@@ -38,9 +42,9 @@ ThemeData buildTheme(Brightness b) {
     tertiary: AppColors.violet,
     error: AppColors.error,
     onError: Colors.white,
-    surface: dark ? const Color(0xFF16263F) : Colors.white,
+    surface: dark ? const Color(0xFF132033) : Colors.white,
     onSurface: dark ? AppColors.darkText : AppColors.lightText,
-    surfaceContainerHighest: dark ? const Color(0xFF1E3252) : const Color(0xFFEAF0FA),
+    surfaceContainerHighest: dark ? const Color(0xFF1A2C44) : const Color(0xFFE3EDF6),
     onSurfaceVariant: dark ? AppColors.darkMuted : AppColors.lightMuted,
   );
   return ThemeData(

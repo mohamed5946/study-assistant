@@ -9,9 +9,11 @@ import '../core/ai.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
+import '../core/schedule_optimizer.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import 'pdf_quiz_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -255,6 +257,19 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 icon: const Icon(Icons.summarize_rounded),
                 tooltip: t('summary'),
                 onPressed: () => _aiAction('summary')),
+            IconButton(
+                icon: const Icon(Icons.question_answer_rounded),
+                tooltip: t('askPdf'),
+                onPressed: _askPdf),
+            IconButton(
+                icon: const Icon(Icons.fact_check_rounded),
+                tooltip: t('selfTest'),
+                onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              PdfSelfTestScreen(doc: widget.doc)),
+                    )),
           ],
         ],
       ),
@@ -322,6 +337,70 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       if (mounted) {
         showSnack(
             context, e is AiException ? e.message : t('sendFailed'),
+            error: true);
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _askPdf() async {
+    final qC = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(t('askPdf')),
+        content: TextField(
+          controller: qC,
+          maxLines: 3,
+          decoration: InputDecoration(hintText: t('askPdfHint')),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(t('cancel'))),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(t('askPdf'))),
+        ],
+      ),
+    );
+    if (ok != true || qC.text.trim().isEmpty) return;
+    final provider = AiService.current();
+    if (provider == null) {
+      if (mounted) showSnack(context, t('noApiKeyMsg'), error: true);
+      return;
+    }
+    if (provider is! GeminiProvider) {
+      if (mounted) showSnack(context, t('pdfNeedsGemini'), error: true);
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final bytes = await File(widget.doc.path).readAsBytes();
+      final out = await provider.analyzePdf(
+        pdfBytes: bytes,
+        fileName: widget.doc.name,
+        prompt: AiService.askPdfPrompt(qC.text.trim(),
+            ar: Settings.lang == 'ar'),
+      );
+      if (!mounted) return;
+      final pages = extractPageCitations(out);
+      final clean = stripPageCitations(out);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AiResultScreen(
+            title: t('askPdf'),
+            text: clean,
+            pages: pages,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        showSnack(context, e is AiException ? e.message : t('sendFailed'),
             error: true);
       }
     } finally {
@@ -479,7 +558,9 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
 class AiResultScreen extends StatelessWidget {
   final String title, text;
-  const AiResultScreen({super.key, required this.title, required this.text});
+  final List<int> pages;
+  const AiResultScreen(
+      {super.key, required this.title, required this.text, this.pages = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -500,6 +581,44 @@ class AiResultScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
           children: [
+            if (pages.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color:
+                                AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.menu_book_rounded,
+                              size: 14, color: AppColors.primaryDark),
+                          const SizedBox(width: 6),
+                          Text(
+                            pages.length == 1
+                                ? '${t('sourceFile')} (${t('page')} ${pages.first})'
+                                : '${t('sourceFile')} (${t('page')}: ${pages.join('، ')})',
+                            style: const TextStyle(
+                                color: AppColors.primaryDark,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             GlassCard(
               child: SelectableText(text,
                   style:

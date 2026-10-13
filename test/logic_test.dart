@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:study_assistant/core/logic.dart';
+import 'package:study_assistant/core/schedule_optimizer.dart';
 
 void main() {
   group('GPA', () {
@@ -130,6 +131,138 @@ void main() {
     test('days / overdue', () {
       expect(countdownParts(3 * 86400000, 0, tr), contains('3'));
       expect(countdownParts(0, 1000, tr), 'overdue');
+    });
+  });
+
+  group('timetable import parsing', () {
+    test('parseWeekday', () {
+      expect(parseWeekday('Mon'), 1);
+      expect(parseWeekday('friday'), 5);
+      expect(parseWeekday('Sun'), 7);
+      expect(parseWeekday('xyz'), 0);
+    });
+
+    test('parseClock', () {
+      expect(parseClock('10:30'), 630);
+      expect(parseClock('9:05 AM'), 545);
+      expect(parseClock('2:30 PM'), 870);
+      expect(parseClock('bad'), -1);
+    });
+
+    test('ImportedSession.fromJson + valid', () {
+      final s = ImportedSession.fromJson({
+        'subject': 'Data Structures',
+        'code': 'CS201',
+        'day': 'Tue',
+        'start': '10:00',
+        'end': '11:30',
+        'place': 'Bldg A',
+        'instructor': 'Dr X',
+        'kind': 'lecture',
+        'group': '',
+      });
+      expect(s.valid, true);
+      expect(s.weekday, 2);
+      expect(s.startMin, 600);
+      final bad = ImportedSession.fromJson({'subject': '', 'day': 'Tue', 'start': '10:00', 'end': '09:00'});
+      expect(bad.valid, false);
+    });
+  });
+
+  group('session overlap', () {
+    ImportedSession s(String subj, int day, int start, int end) =>
+        ImportedSession(subject: subj, weekday: day, startMin: start, endMin: end);
+
+    test('overlap detection', () {
+      expect(sessionsOverlap(s('A', 1, 600, 660), s('B', 1, 630, 700)), true);
+      expect(sessionsOverlap(s('A', 1, 600, 660), s('B', 1, 660, 720)), false);
+      expect(sessionsOverlap(s('A', 1, 600, 660), s('B', 2, 630, 700)), false);
+      expect(hasAnyOverlap([s('A', 1, 600, 660), s('B', 1, 630, 700)]), true);
+      expect(hasAnyOverlap([s('A', 1, 600, 660), s('B', 1, 660, 720)]), false);
+    });
+
+    test('distinctDays', () {
+      expect(distinctDays([s('A', 1, 600, 660), s('B', 1, 700, 760), s('C', 3, 600, 660)]), 2);
+    });
+  });
+
+  group('schedule optimizer', () {
+    ImportedSession s(String subj, String group, int day, int start, int end) =>
+        ImportedSession(subject: subj, group: group, weekday: day, startMin: start, endMin: end);
+
+    test('minimizes distinct days across section choices', () {
+      // Math: group A on Mon 10-12, group B on Wed 10-12.
+      // Physics: group A on Mon 13-15, group B on Thu 10-12.
+      // Best: Math A + Physics A => 1 day (Mon). Any other combo => 2 days.
+      final sessions = [
+        s('Math', 'A', 1, 600, 720),
+        s('Math', 'B', 3, 600, 720),
+        s('Physics', 'A', 1, 780, 900),
+        s('Physics', 'B', 4, 600, 720),
+      ];
+      final built = buildOptions(sessions);
+      final res = optimizeSchedule(built.options, built.labels);
+      expect(res, isNotNull);
+      expect(res!.days, 1);
+      expect(res.groups['Math'], 'A');
+      expect(res.groups['Physics'], 'A');
+    });
+
+    test('returns null + clash pairs when impossible', () {
+      // Two subjects, single fixed slot each, overlapping.
+      final sessions = [
+        s('Math', '', 1, 600, 720),
+        s('Physics', '', 1, 660, 780),
+      ];
+      final built = buildOptions(sessions);
+      final res = optimizeSchedule(built.options, built.labels);
+      expect(res, isNull);
+      final clashes = findClashingSubjects(sessions);
+      expect(clashes.length, 1);
+      expect(clashes.first.$1, 'Math');
+      expect(clashes.first.$2, 'Physics');
+    });
+
+    test('shared lectures join every group', () {
+      // Chem lecture (no group) Mon 9-10 + lab A Tue 10-12 / lab B Wed 10-12.
+      final sessions = [
+        s('Chem', '', 1, 540, 600),
+        s('Chem', 'A', 2, 600, 720),
+        s('Chem', 'B', 3, 600, 720),
+      ];
+      final built = buildOptions(sessions);
+      expect(built.options['Chem']!.length, 2);
+      // each option contains the shared lecture
+      for (final opt in built.options['Chem']!) {
+        expect(opt.any((x) => x.startMin == 540), true);
+      }
+    });
+  });
+
+  group('self-test scoring', () {
+    test('counts correct answers', () {
+      final r = scoreSelfTest(
+        ['Paris', 'true', '42'],
+        {0: 'paris', 1: 'false', 2: ''},
+      );
+      expect(r.correct, 1);
+      expect(r.total, 3);
+    });
+  });
+
+  group('page citations', () {
+    test('extracts [p:N] markers', () {
+      final pages = extractPageCitations('Photosynthesis happens here [p:12] and there [p:12] too [p:3].');
+      expect(pages, [3, 12]);
+      expect(stripPageCitations('See this [p:5] now'), 'See this now');
+    });
+  });
+
+  group('grade average', () {
+    test('percentage average across entries', () {
+      expect(gradeAverage([(80, 100), (45, 50)]), closeTo(85, 0.001));
+      expect(gradeAverage([]), 0);
+      expect(gradeAverage([(10, 0)]), 0); // invalid max skipped
     });
   });
 }
