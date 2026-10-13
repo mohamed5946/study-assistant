@@ -140,16 +140,11 @@ Future<T?> showGlassDialog<T>(
       );
     },
     transitionBuilder: (ctx, anim, _, child) {
-      final scale = Tween<double>(begin: 0.9, end: 1.0).animate(
-        CurvedAnimation(
-          parent: anim,
-          curve: Curves.easeOutBack,
-          reverseCurve: Curves.easeIn,
-        ),
-      );
+      // TEST BUILD: plain fade only (no scale/overshoot) — diagnosing the
+      // yellow double-line artifact under dialog text on Mohamed's device.
       return FadeTransition(
         opacity: CurvedAnimation(parent: anim, curve: Curves.easeOut),
-        child: ScaleTransition(scale: scale, child: child),
+        child: child,
       );
     },
   );
