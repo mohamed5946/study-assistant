@@ -20,7 +20,7 @@ dependencies:
   pdfx: ^2.9.0
   flutter_local_notifications: ^19.4.1
   timezone: ^0.10.1
-  flutter_timezone: ^1.0.8
+  flutter_timezone: ^5.1.1
   path_provider: ^2.1.5
 
 dev_dependencies:
