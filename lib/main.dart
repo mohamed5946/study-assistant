@@ -11,20 +11,19 @@ import 'core/widget_service.dart';
 const _bundledGroqKey =
     String.fromEnvironment('GROQ_API_KEY', defaultValue: '');
 
-/// On first launch of a build that bundles a Groq key (and only if the
-/// user hasn't saved his own key), auto-configure the OpenAI-compatible
-/// provider with the free Groq endpoint. A manually entered key always
-/// wins — this runs exactly once.
+/// On launch of a build that bundles a Groq key, auto-configure the
+/// OpenAI-compatible provider when the saved key is empty OR is a stale
+/// Google (Gemini) key left over from v1 — a Gemini key can never work with
+/// the OpenAI-compatible provider, so that is always a misconfiguration.
+/// A user-typed non-Google key is never overwritten. Idempotent.
 Future<void> _applyBundledGroqKey() async {
   if (_bundledGroqKey.isEmpty) return;
-  if (DB.kv.get('bundledKeyApplied', defaultValue: false) as bool) return;
-  if (Settings.aiKey.trim().isEmpty) {
-    Settings.aiProvider = 'openai';
-    Settings.aiBaseUrl = 'https://api.groq.com/openai/v1';
-    Settings.aiModel = 'openai/gpt-oss-20b';
-    Settings.aiKey = _bundledGroqKey;
-  }
-  await DB.kv.put('bundledKeyApplied', true);
+  final savedKey = Settings.aiKey.trim();
+  if (savedKey.isNotEmpty && !savedKey.startsWith('AIza')) return;
+  Settings.aiProvider = 'openai';
+  Settings.aiBaseUrl = 'https://api.groq.com/openai/v1';
+  Settings.aiModel = 'openai/gpt-oss-20b';
+  Settings.aiKey = _bundledGroqKey;
 }
 
 Future<void> main() async {

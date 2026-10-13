@@ -301,8 +301,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           system: '');
       msg = reply.isNotEmpty ? t('connectionOk') : t('connectionFail');
       isError = reply.isEmpty;
-    } catch (_) {
-      msg = t('connectionFail');
+    } catch (e) {
+      // Show the REAL error (status code / API message / network detail)
+      // under the friendly prefix — this is the diagnostic surface.
+      final detail = e is AiException ? e.message : e.toString();
+      msg = '${t('connectionFail')}\n$detail';
       isError = true;
     }
     if (mounted) {

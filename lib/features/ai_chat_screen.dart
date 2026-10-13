@@ -613,9 +613,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ChatMessage(id: aId, role: 1, text: reply, createdMs: now + 1));
     } catch (e) {
       if (mounted) {
-        showSnack(
-            context, e is AiException ? e.message : t('sendFailed'),
-            error: true);
+        // Surface the real failure (API status/message or network detail)
+        // after the friendly prefix — diagnostic, not just "failed".
+        final detail = e is AiException ? e.message : e.toString();
+        showSnack(context, '${t('sendFailed')}\n$detail', error: true);
       }
     } finally {
       if (mounted) setState(() => _sending = false);
