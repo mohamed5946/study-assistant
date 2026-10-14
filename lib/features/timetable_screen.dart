@@ -1,4 +1,3 @@
-import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import '../core/calendar_helper.dart';
@@ -64,7 +63,6 @@ class _TimetableScreenState extends State<TimetableScreen> {
         .add(Duration(days: daysAhead));
     final kind = e.kind == 0 ? t('lecture') : t('section');
     await CalendarHelper.addEvent(
-      context: context,
       title: '$name ($kind)',
       start: start,
       end: end,
@@ -72,8 +70,9 @@ class _TimetableScreenState extends State<TimetableScreen> {
         if (e.place.isNotEmpty) e.place,
         if (e.instructor.isNotEmpty) e.instructor,
       ].join(' • '),
-      recurrence: RecurrenceRule(RecurrenceFrequency.Weekly),
-      reminders: [Reminder(minutes: 15)],
+      location: e.place,
+      weekly: true,
+      reminderMinutes: 15,
     );
   }
 
