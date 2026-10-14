@@ -1,4 +1,7 @@
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
+import '../core/calendar_helper.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
@@ -21,12 +24,70 @@ class TimetableScreen extends StatefulWidget {
 class _TimetableScreenState extends State<TimetableScreen> {
   int _weekday = DateTime.now().weekday; // 1=Mon..7=Sun
 
+  /// Exports the whole weekly timetable as formatted text and shares it.
+  Future<void> _shareTimetable() async {
+    final entries = DB.timetable.values.toList()
+      ..sort((a, b) {
+        if (a.weekday != b.weekday) return a.weekday.compareTo(b.weekday);
+        return a.startMin.compareTo(b.startMin);
+      });
+    final buf = StringBuffer('${t('timetable')}\n');
+    for (var wd = 1; wd <= 7; wd++) {
+      final dayEntries = entries.where((e) => e.weekday == wd).toList();
+      if (dayEntries.isEmpty) continue;
+      buf.writeln('\n${t(_dayKeys[wd - 1])}:');
+      for (final e in dayEntries) {
+        final name = DB.subjectName(e.subjectId) ?? '—';
+        final kind = e.kind == 0 ? t('lecture') : t('section');
+        buf.writeln(
+            '• $name ($kind) — ${formatClock(e.startMin)} → ${formatClock(e.endMin)}'
+            '${e.place.isNotEmpty ? ' @ ${e.place}' : ''}');
+      }
+    }
+    await Share.share(buf.toString(), subject: t('timetable'));
+  }
+
+  /// Adds one lecture/section as a weekly recurring calendar event.
+  Future<void> _addEntryToCalendar(TimetableEntry e) async {
+    final name = DB.subjectName(e.subjectId) ?? t('timetable');
+    final now = DateTime.now();
+    // Next occurrence of this weekday (1=Mon..7=Sun).
+    var daysAhead = (e.weekday - now.weekday) % 7;
+    final todayStart = DateTime(now.year, now.month, now.day,
+        e.startMin ~/ 60, e.startMin % 60);
+    if (daysAhead == 0 && todayStart.isBefore(now)) daysAhead = 7;
+    final start = DateTime(now.year, now.month, now.day, e.startMin ~/ 60,
+            e.startMin % 60)
+        .add(Duration(days: daysAhead));
+    final end = DateTime(now.year, now.month, now.day, e.endMin ~/ 60,
+            e.endMin % 60)
+        .add(Duration(days: daysAhead));
+    final kind = e.kind == 0 ? t('lecture') : t('section');
+    await CalendarHelper.addEvent(
+      context: context,
+      title: '$name ($kind)',
+      start: start,
+      end: end,
+      description: [
+        if (e.place.isNotEmpty) e.place,
+        if (e.instructor.isNotEmpty) e.instructor,
+      ].join(' • '),
+      recurrence: RecurrenceRule(RecurrenceFrequency.Weekly),
+      reminders: [Reminder(minutes: 15)],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(t('timetable')),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.share_rounded),
+            tooltip: t('shareTimetable'),
+            onPressed: _shareTimetable,
+          ),
           IconButton(
             icon: const Icon(Icons.auto_awesome_rounded),
             tooltip: t('importTimetable'),
@@ -169,6 +230,11 @@ class _TimetableScreenState extends State<TimetableScreen> {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.event_rounded),
+              tooltip: t('addToCalendar'),
+              onPressed: () => _addEntryToCalendar(e),
             ),
             IconButton(
                 icon: const Icon(Icons.edit_rounded),

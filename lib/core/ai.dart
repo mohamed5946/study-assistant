@@ -56,6 +56,11 @@ abstract class AiProvider {
     required String fileName,
     required String prompt,
   });
+  Future<String> solveQuestions({
+    required List<int> questionsPdfBytes,
+    required String questionsFileName,
+    required List<({String name, List<int> bytes})> materialPdfs,
+  });
   Future<String> analyzeImage({
     required List<int> bytes,
     required String mimeType,
@@ -176,6 +181,47 @@ class OpenAiCompatProvider implements AiProvider {
   }
 
   @override
+  Future<String> solveQuestions({
+    required List<int> questionsPdfBytes,
+    required String questionsFileName,
+    required List<({String name, List<int> bytes})> materialPdfs,
+  }) async {
+    final qExtracted = await PdfText.extract(questionsPdfBytes);
+    if (qExtracted.text.trim().isEmpty) {
+      throw AiException(Settings.lang == 'ar'
+          ? 'تعذر استخراج نص من PDF الأسئلة — ممكن يكون صفحات مصورة بدون نص.'
+          : 'Could not extract text from the questions PDF — it may be scanned images.');
+    }
+    final buf = StringBuffer()
+      ..writeln('=== QUESTIONS PDF: $questionsFileName ===')
+      ..writeln('--- BEGIN QUESTIONS ---')
+      ..writeln(qExtracted.text)
+      ..writeln('--- END QUESTIONS ---')
+      ..writeln()
+      ..writeln('=== COURSE MATERIALS (knowledge base) ===');
+    // Add material PDFs as context, sharing the 90k char budget.
+    var remaining = 60000;
+    for (final m in materialPdfs) {
+      if (remaining <= 1000) break;
+      final ext = await PdfText.extract(m.bytes, maxChars: remaining);
+      if (ext.text.trim().isEmpty) continue;
+      buf
+        ..writeln('--- Material: ${m.name} ---')
+        ..writeln(ext.text)
+        ..writeln();
+      remaining -= ext.text.length;
+    }
+    return _post([
+      {'role': 'system', 'content': AiService.systemPrompt()},
+      {
+        'role': 'user',
+        'content':
+            '${AiService.solveQuestionsPrompt(ar: Settings.lang == 'ar')}\n\n${buf.toString()}',
+      },
+    ]);
+  }
+
+  @override
   Future<String> analyzeImage({
     required List<int> bytes,
     required String mimeType,
@@ -242,6 +288,27 @@ If the PDF is about computer science/programming, the "explanation" may include 
     return '''
 Create up to 20 flashcards from the PDF text below in $lang.
 Return ONLY a JSON array, no markdown fences: [{"front":"question/prompt","back":"answer"}]
+''';
+  }
+
+  /// Prompt for solving questions extracted from a questions-PDF, using the
+  /// subject's other PDFs as the knowledge base.
+  static String solveQuestionsPrompt({required bool ar}) {
+    final lang = ar ? 'Arabic' : 'English';
+    return '''
+You are given TWO parts below:
+1. "QUESTIONS PDF" — contains exam/practice questions. Extract each question AS WRITTEN.
+2. "COURSE MATERIALS" — PDFs from the same subject. Use them as your knowledge base to SOLVE each question.
+
+For each question, solve it using the course materials. Return ONLY a JSON array, no markdown fences, no extra text. Each item:
+{"question":"exact question text","type":"mcq"|"tf"|"written","options":["a","b","c","d"],"correctIndex":0,"answer":"full correct answer text","explanation":"brief explanation in $lang, referencing the material"}
+
+Rules:
+- For "mcq": include ALL options as written, set "correctIndex" to the 0-based index of the correct option, "answer" = the correct option text.
+- For "tf": options = ["true","false"] (or ["صح","خطأ"] in Arabic), correctIndex = 0 or 1.
+- For "written": options = [], correctIndex = -1, "answer" = the full solution.
+- Language: $lang.
+- If a question cannot be answered from the materials, still solve it from your knowledge but note that in the explanation.
 ''';
   }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart';
 import '../core/ai.dart';
@@ -147,6 +148,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             fontSize: 12)),
                 ],
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: t('sharePdf'),
+              onPressed: () async {
+                final f = File(d.path);
+                if (await f.exists()) {
+                  await Share.shareXFiles([XFile(f.path, name: d.name)]);
+                }
+              },
             ),
             IconButton(
               icon:
@@ -577,32 +588,196 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
   }
 }
 
-class AiResultScreen extends StatelessWidget {
+class AiResultScreen extends StatefulWidget {
   final String title, text;
   final List<int> pages;
   const AiResultScreen(
       {super.key, required this.title, required this.text, this.pages = const []});
+  @override
+  State<AiResultScreen> createState() => _AiResultScreenState();
+}
+
+class _AiResultScreenState extends State<AiResultScreen> {
+  bool _searchOpen = false;
+  final _searchC = TextEditingController();
+  final _scrollC = ScrollController();
+  List<int> _matches = [];
+  int _current = 0;
+
+  @override
+  void dispose() {
+    _searchC.dispose();
+    _scrollC.dispose();
+    super.dispose();
+  }
+
+  void _updateSearch(String q) {
+    final query = q.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _matches = [];
+        _current = 0;
+      });
+      return;
+    }
+    final lower = widget.text.toLowerCase();
+    final qLower = query.toLowerCase();
+    final found = <int>[];
+    var i = 0;
+    while (true) {
+      i = lower.indexOf(qLower, i);
+      if (i < 0) break;
+      found.add(i);
+      i += qLower.length;
+    }
+    setState(() {
+      _matches = found;
+      _current = 0;
+    });
+    if (found.isNotEmpty) _jumpTo(0);
+  }
+
+  void _jumpTo(int idx) {
+    if (_matches.isEmpty) return;
+    final n = _matches.length;
+    final wrapped = ((idx % n) + n) % n;
+    setState(() => _current = wrapped);
+    // Approximate scroll: match offset ratio over total text length.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollC.hasClients) return;
+      final ratio = _matches[wrapped] / widget.text.length;
+      final max = _scrollC.position.maxScrollExtent;
+      _scrollC.animateTo(
+        (ratio * max).clamp(0.0, max),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  /// Builds highlighted text spans: yellow for matches, orange for current.
+  TextSpan _highlighted() {
+    const base =
+        TextStyle(fontSize: 15, height: 1.8, color: null);
+    if (_matches.isEmpty || _searchC.text.trim().isEmpty) {
+      return TextSpan(text: widget.text, style: base);
+    }
+    final spans = <TextSpan>[];
+    final qLen = _searchC.text.trim().length;
+    var last = 0;
+    for (var k = 0; k < _matches.length; k++) {
+      final s = _matches[k];
+      if (s > last) {
+        spans.add(TextSpan(text: widget.text.substring(last, s), style: base));
+      }
+      spans.add(TextSpan(
+        text: widget.text.substring(s, s + qLen),
+        style: base.copyWith(
+          backgroundColor: k == _current
+              ? const Color(0xFFFF9800).withValues(alpha: 0.55)
+              : const Color(0xFFFFEB3B).withValues(alpha: 0.55),
+          fontWeight: k == _current ? FontWeight.w700 : null,
+        ),
+      ));
+      last = s + qLen;
+    }
+    if (last < widget.text.length) {
+      spans.add(TextSpan(text: widget.text.substring(last), style: base));
+    }
+    return TextSpan(children: spans);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
-        title: Text(title),
+        title: _searchOpen
+            ? TextField(
+                controller: _searchC,
+                autofocus: true,
+                onChanged: _updateSearch,
+                decoration: InputDecoration(
+                  hintText: t('searchInText'),
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant),
+                ),
+                style: const TextStyle(fontSize: 16),
+              )
+            : Text(widget.title,
+                maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.copy_rounded),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: text));
-              showSnack(context, t('copied'));
-            },
-          ),
+          if (_searchOpen) ...[
+            if (_matches.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Center(
+                  child: Text(
+                    '${_current + 1} / ${_matches.length}',
+                    style: const TextStyle(
+                        fontSize: 13, fontWeight: FontWeight.w700),
+                    textDirection: TextDirection.ltr,
+                  ),
+                ),
+              )
+            else if (_searchC.text.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Center(
+                  child: Text(
+                    t('noResults'),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant),
+                  ),
+                ),
+              ),
+            IconButton(
+              icon: const Icon(Icons.keyboard_arrow_up_rounded),
+              onPressed:
+                  _matches.isEmpty ? null : () => _jumpTo(_current - 1),
+            ),
+            IconButton(
+              icon: const Icon(Icons.keyboard_arrow_down_rounded),
+              onPressed:
+                  _matches.isEmpty ? null : () => _jumpTo(_current + 1),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => setState(() {
+                _searchOpen = false;
+                _searchC.clear();
+                _matches = [];
+                _current = 0;
+              }),
+            ),
+          ] else ...[
+            IconButton(
+              icon: const Icon(Icons.search_rounded),
+              tooltip: t('searchInText'),
+              onPressed: () => setState(() => _searchOpen = true),
+            ),
+            IconButton(
+              icon: const Icon(Icons.copy_rounded),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: widget.text));
+                showSnack(context, t('copied'));
+              },
+            ),
+          ],
         ],
       ),
       body: AuroraBackground(
         child: ListView(
+          controller: _scrollC,
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 40),
           children: [
-            if (pages.isNotEmpty)
+            if (widget.pages.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Wrap(
@@ -624,18 +799,16 @@ class AiResultScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.menu_book_rounded,
                               size: 14,
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
+                              color: dark
                                   ? AppColors.pink
                                   : AppColors.primaryDark),
                           const SizedBox(width: 6),
                           Text(
-                            pages.length == 1
-                                ? '${t('sourceFile')} (${t('page')} ${pages.first})'
-                                : '${t('sourceFile')} (${t('page')}: ${pages.join('، ')})',
+                            widget.pages.length == 1
+                                ? '${t('sourceFile')} (${t('page')} ${widget.pages.first})'
+                                : '${t('sourceFile')} (${t('page')}: ${widget.pages.join('، ')})',
                             style: TextStyle(
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
+                                color: dark
                                     ? AppColors.pink
                                     : AppColors.primaryDark,
                                 fontWeight: FontWeight.w700,
@@ -648,9 +821,11 @@ class AiResultScreen extends StatelessWidget {
                 ),
               ),
             GlassCard(
-              child: SelectableText(text,
-                  style:
-                      const TextStyle(fontSize: 15, height: 1.8)),
+              child: SelectableText.rich(
+                _highlighted(),
+                style:
+                    const TextStyle(fontSize: 15, height: 1.8),
+              ),
             ),
           ],
         ),

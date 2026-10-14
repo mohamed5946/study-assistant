@@ -11,6 +11,7 @@ import 'ai_chat_screen.dart';
 import 'flashcards_screen.dart';
 import 'library_screen.dart';
 import 'notes_screen.dart';
+import 'pdf_solver_screen.dart';
 import 'pomodoro_screen.dart';
 import 'subjects_screen.dart' show nextEntryFor, dayNameL;
 
@@ -514,6 +515,14 @@ class SubjectDetailScreen extends StatelessWidget {
             MaterialPageRoute(
                 builder: (_) =>
                     NotesScreen(initialSubjectId: s.id)),
+          );
+        }),
+        _qa(context, Icons.quiz_rounded, t('pdfQuestions'),
+            AppColors.success, () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) => PdfSolverScreen(subject: s)),
           );
         }),
       ],

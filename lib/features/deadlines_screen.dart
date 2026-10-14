@@ -1,4 +1,6 @@
+import 'package:device_calendar/device_calendar.dart';
 import 'package:flutter/material.dart';
+import '../core/calendar_helper.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
@@ -51,8 +53,25 @@ class DeadlinesScreen extends StatelessWidget {
     );
   }
 
-  Widget _row(BuildContext context, Deadline d) {
-    final now = DateTime.now();
+  /// Adds a deadline/exam as a single calendar event with a reminder.
+  Future<void> _addToCalendar(BuildContext context, Deadline d) async {
+    final due = DateTime.fromMillisecondsSinceEpoch(d.dueMs);
+    final sName = DB.subjectName(d.subjectId);
+    final kindLabel = d.kind == 0 ? t('exam') : t('assignment');
+    await CalendarHelper.addEvent(
+      context: context,
+      title: '${d.title} ($kindLabel)',
+      start: due,
+      end: due.add(const Duration(hours: 1)),
+      description: [
+        if (sName != null) sName,
+        if (d.notes.isNotEmpty) d.notes,
+      ].join('\n'),
+      reminders: [Reminder(minutes: 60)],
+    );
+  }
+
+  Widget _row(BuildContext context, Deadline d) {    final now = DateTime.now();
     final due = DateTime.fromMillisecondsSinceEpoch(d.dueMs);
     final overdue = due.isBefore(now) && !d.done;
     final sName = DB.subjectName(d.subjectId);
@@ -101,6 +120,11 @@ class DeadlinesScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.event_rounded),
+              tooltip: t('addToCalendar'),
+              onPressed: () => _addToCalendar(context, d),
             ),
             IconButton(
                 icon: const Icon(Icons.edit_rounded),
