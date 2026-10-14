@@ -10,7 +10,6 @@ import '../core/models.dart';
 import '../core/pressable_3d.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
-import '../core/widgets.dart';
 
 /// PDF Questions Solver: upload a questions PDF inside a subject, AI extracts
 /// the questions as-written and solves them using the subject's other PDFs.

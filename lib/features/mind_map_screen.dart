@@ -3,13 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../core/ai.dart';
 import '../core/book_loader.dart';
-import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/pressable_3d.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
-import '../core/widgets.dart';
 
 /// Mind Map: AI generates a topic hierarchy from a PDF, rendered as an
 /// interactive zoomable map.
