@@ -6,6 +6,7 @@ import '../core/nav.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/pressable_3d.dart';
 import 'planner_screen.dart';
 import 'profile_screen.dart';
 import 'scan_screen.dart';
@@ -268,28 +269,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _statCard(BuildContext context, IconData icon, String value,
       String label, Color tint, Color iconColor) {
-    return GlassCard(
-      padding:
-          const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-      child: Column(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration:
-                BoxDecoration(color: tint, shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(value,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-          Text(label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 11)),
-        ],
+    return Pressable3D(
+      child: GlassCard(
+        padding:
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        child: Column(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration:
+                  BoxDecoration(color: tint, shape: BoxShape.circle),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(value,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 11)),
+          ],
+        ),
       ),
     );
   }
@@ -335,62 +338,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _tipCard(BuildContext context, int studyMin, int streak,
       int completed, int classes) {
-    return GlassCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.secondary.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(14),
+    return Pressable3D(
+      child: GlassCard(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.auto_awesome_rounded,
+                  color: AppColors.secondary, size: 22),
             ),
-            child: const Icon(Icons.auto_awesome_rounded,
-                color: AppColors.secondary, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(t('aiStudyTip'),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15)),
-                const SizedBox(height: 4),
-                Text(_tip(studyMin, streak, completed, classes),
-                    style: TextStyle(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                        fontSize: 13,
-                        height: 1.5)),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t('aiStudyTip'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(_tip(studyMin, streak, completed, classes),
+                      style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
+                          fontSize: 13,
+                          height: 1.5)),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _qa(BuildContext context, IconData icon, String label,
       VoidCallback onTap, Color color) {
-    return GlassCard(
+    return Pressable3D(
       onTap: onTap,
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(15),
+      child: GlassCard(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Icon(icon, color: color, size: 22),
             ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 6),
+            const SizedBox(height: 6),
             Text(label,
                 textAlign: TextAlign.center,
                 maxLines: 2,
@@ -399,7 +405,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
           ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _classRow(BuildContext context, TimetableEntry e) {
