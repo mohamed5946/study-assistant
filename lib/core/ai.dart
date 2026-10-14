@@ -330,12 +330,17 @@ Rules:
   /// Asks a question about the PDF, demanding page citations.
   static String askPdfPrompt(String question, {required bool ar}) {
     final lang = ar ? 'Arabic' : 'English';
+    final sourcesLabel = ar ? 'المصادر:' : 'Sources:';
+    final generalNote = ar
+        ? 'من المعرفة العامة'
+        : 'From general knowledge';
     return '''
 Answer this question from the PDF text below only, in $lang: "$question"
 Rules:
 - Base your answer strictly on the PDF content. If the PDF doesn't contain the answer, say so honestly.
 - The PDF text has page markers like "===== Page 3 =====". After each factual claim, cite the page like this: [p:12]
-- End your answer with a "Sources:" line listing the cited pages.
+- End your answer with a "$sourcesLabel" line listing which document(s)/page(s) the info came from.
+- If the answer is from general knowledge (not in the PDF), end with "$sourcesLabel $generalNote" instead.
 ''';
   }
 

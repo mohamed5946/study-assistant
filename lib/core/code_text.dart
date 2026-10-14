@@ -6,6 +6,7 @@ import 'widgets.dart';
 
 /// Renders text with fenced ```code blocks``` as dark syntax-highlighted
 /// cards (with a copy button). Used for AI replies (CS-tailored chat).
+/// A trailing "المصادر:" / "Sources:" line is rendered as a distinct pill.
 class CodeAwareText extends StatelessWidget {
   final String text;
   final TextStyle? style;
@@ -16,6 +17,17 @@ class CodeAwareText extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final segments = _split(text);
+    // Pull out a trailing sources line (if any) to render as a pill.
+    String? sourcesLine;
+    if (segments.isNotEmpty && !segments.last.isCode) {
+      final lines = segments.last.text.split('\n');
+      final lastLine = lines.last.trim();
+      if (_isSourcesLine(lastLine)) {
+        sourcesLine = lastLine;
+        final rest = lines.sublist(0, lines.length - 1).join('\n').trimRight();
+        segments[segments.length - 1] = _Seg(rest, false);
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -24,6 +36,7 @@ class CodeAwareText extends StatelessWidget {
           seg.isCode
               ? _CodeCard(code: seg.text)
               : _textWidget(seg.text),
+        if (sourcesLine != null) _SourcesPill(line: sourcesLine),
       ],
     );
   }
@@ -37,6 +50,86 @@ class CodeAwareText extends StatelessWidget {
       child: selectable
           ? SelectableText(s, style: st)
           : Text(s, style: st),
+    );
+  }
+}
+
+/// True if the line is a "المصادر:" / "Sources:" attribution footer.
+bool _isSourcesLine(String line) {
+  final l = line.trim();
+  return l.startsWith('المصادر:') || l.startsWith('المصادر :') ||
+      l.toLowerCase().startsWith('sources:');
+}
+
+/// Distinct pill for the AI's source attribution footer.
+class _SourcesPill extends StatelessWidget {
+  final String line;
+  const _SourcesPill({required this.line});
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final isGeneral = line.contains(t('fromGeneralKnowledge'));
+    // Strip the label prefix for a cleaner pill body.
+    var body = line
+        .replaceFirst(RegExp(r'^المصادر\s*:\s*'), '')
+        .replaceFirst(RegExp(r'^sources\s*:\s*', caseSensitive: false), '')
+        .trim();
+    if (body.isEmpty) body = t('sources');
+    final accent = isGeneral
+        ? AppColors.warning
+        : (dark ? AppColors.pink : AppColors.primaryDark);
+    return Padding(
+      padding: const EdgeInsets.only(top: 4, bottom: 8),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: accent.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isGeneral
+                  ? Icons.public_rounded
+                  : Icons.menu_book_rounded,
+              size: 15,
+              color: accent,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    t('sources'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: accent,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    body,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      height: 1.5,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
