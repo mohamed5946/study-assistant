@@ -11,7 +11,7 @@ import 'package:path/path.dart';
 class FlutterTesseractOcr {
   static const String tessDataConfig = 'assets/tessdata_config.json';
   static const String tessDataPath = 'assets/tessdata';
-  static MethodChannel _channel =
+  static final MethodChannel _channel =
       MethodChannel('flutter_tesseract_ocr');
 
   /// image to  text
