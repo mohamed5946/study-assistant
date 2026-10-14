@@ -55,7 +55,6 @@ abstract class AiProvider {
     required List<int> pdfBytes,
     required String fileName,
     required String prompt,
-    void Function(int done, int total)? onOcrProgress,
   });
   Future<String> solveQuestions({
     required List<int> questionsPdfBytes,
@@ -156,12 +155,8 @@ class OpenAiCompatProvider implements AiProvider {
     required List<int> pdfBytes,
     required String fileName,
     required String prompt,
-    void Function(int done, int total)? onOcrProgress,
   }) async {
-    final extracted = await PdfText.extract(
-      pdfBytes,
-      onOcrProgress: onOcrProgress,
-    );
+    final extracted = await PdfText.extract(pdfBytes);
     if (extracted.text.trim().isEmpty) {
       throw AiException(Settings.lang == 'ar'
           ? 'تعذر استخراج نص من الـ PDF — ممكن يكون صفحات مصورة بدون نص. جرّب ملف تاني.'
@@ -175,10 +170,6 @@ class OpenAiCompatProvider implements AiProvider {
     if (extracted.truncated) {
       buf.writeln(
           '[Note: only the first part of this long PDF was included. Answer from what is above.]');
-    }
-    if (extracted.usedOcr) {
-      buf.writeln(
-          '[Note: this text was extracted via on-device OCR from scanned pages and may contain recognition errors. Do your best with it.]');
     }
     return _post([
       {'role': 'system', 'content': AiService.systemPrompt()},

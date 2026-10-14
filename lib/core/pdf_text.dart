@@ -1,5 +1,4 @@
 import 'package:syncfusion_flutter_pdf/pdf.dart';
-import 'ocr.dart';
 
 /// Result of on-device PDF text extraction.
 class PdfExtractResult {
@@ -8,15 +7,10 @@ class PdfExtractResult {
   final String text;
   final int pageCount;
   final bool truncated;
-
-  /// True when the text came from OCR (scanned pages) instead of the PDF's
-  /// embedded text layer — callers should warn that it may contain errors.
-  final bool usedOcr;
   const PdfExtractResult({
     required this.text,
     required this.pageCount,
     required this.truncated,
-    this.usedOcr = false,
   });
 }
 
@@ -28,15 +22,9 @@ class PdfText {
   static const int maxChars = 90000;
 
   /// Extracts text page by page, in order, stopping at [maxChars].
-  ///
-  /// If the PDF has no embedded text layer (scanned images) and
-  /// [tryOcrFallback] is true, falls back to on-device Tesseract OCR.
-  /// [onOcrProgress] reports (done, total) during the OCR pass.
   static Future<PdfExtractResult> extract(
     List<int> bytes, {
     int maxChars = PdfText.maxChars,
-    bool tryOcrFallback = true,
-    void Function(int done, int total)? onOcrProgress,
   }) async {
     final doc = PdfDocument(inputBytes: bytes);
     try {
@@ -60,31 +48,8 @@ class PdfText {
         }
         buf.write(chunk);
       }
-      final text = buf.toString().trim();
-      // Scanned PDF: no (or almost no) embedded text → try OCR.
-      if (text.length < 50 && tryOcrFallback) {
-        try {
-          final ocrText = await Ocr.extractFromPdf(
-            bytes,
-            onProgress: onOcrProgress,
-          );
-          if (ocrText.isNotEmpty) {
-            final clipped = ocrText.length > maxChars
-                ? ocrText.substring(0, maxChars)
-                : ocrText;
-            return PdfExtractResult(
-              text: clipped,
-              pageCount: n,
-              truncated: ocrText.length > maxChars,
-              usedOcr: true,
-            );
-          }
-        } catch (_) {
-          // OCR failed — fall through and return the (empty) text result.
-        }
-      }
       return PdfExtractResult(
-        text: text,
+        text: buf.toString().trim(),
         pageCount: n,
         truncated: truncated || buf.length >= maxChars,
       );

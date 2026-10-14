@@ -111,8 +111,6 @@ class L {
       'sendFailed': 'فشل الإرسال. اتأكد من النت والمفتاح وحاول تاني.',
       'library': 'مكتبة الـ PDF',
       'importPdf': 'استيراد PDF',
-      'ocrProcessing': 'جاري قراءة الصفحات المصورة...',
-      'ocrUsed': 'تم استخدام التعرف الضوئي على النص (OCR)',
       'pdfQuestions': 'أسئلة PDF',
       'uploadQuestionsPdf': 'رفع PDF أسئلة',
       'pdfSolverHint':
@@ -502,8 +500,6 @@ class L {
       'sendFailed': 'Send failed. Check internet and key, then retry.',
       'library': 'PDF Library',
       'importPdf': 'Import PDF',
-      'ocrProcessing': 'Reading scanned pages...',
-      'ocrUsed': 'OCR was used to read this document',
       'pdfQuestions': 'PDF Questions',
       'uploadQuestionsPdf': 'Upload questions PDF',
       'pdfSolverHint':
