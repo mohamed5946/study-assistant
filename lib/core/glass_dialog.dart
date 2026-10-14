@@ -26,11 +26,14 @@ Future<T?> showGlassDialog<T>(
         tween: Tween(begin: 0.9, end: 1.0),
         duration: const Duration(milliseconds: 320),
         curve: Curves.easeOutBack,
-        builder: (context, scale, child) => FadeTransition(
-          opacity: AlwaysStoppedAnimation(
-              ((scale - 0.9) / 0.1).clamp(0.0, 1.0)),
-          child: Transform.scale(scale: scale, child: child),
-        ),
+        builder: (context, scale, child) {
+          return FadeTransition(
+            opacity: AlwaysStoppedAnimation(
+              ((scale - 0.9) / 0.1).clamp(0.0, 1.0),
+            ),
+            child: Transform.scale(scale: scale, child: child),
+          );
+        },
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Dialog(
@@ -127,7 +130,8 @@ Future<T?> showGlassDialog<T>(
             ),
           ),
         ),
-      ),
-    );
+        ),
+      );
+    },
   );
 }
