@@ -51,21 +51,25 @@ class _ShellState extends State<Shell> {
     return Scaffold(
       // Page entrance animation on every tab switch (fade + gentle slide),
       // keyed by tab index so it replays; IndexedStack keeps page state.
-      body: TweenAnimationBuilder<double>(
-        key: ValueKey(_i),
-        tween: Tween(begin: 0.0, end: 1.0),
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOut,
-        builder: (context, v, child) => Opacity(
-          opacity: v,
-          child: Transform.translate(
-            offset: Offset(24 * (1 - v), 0),
-            child: child,
+      // SafeArea keeps tab content below the system status bar (edge-to-edge).
+      body: SafeArea(
+        bottom: false,
+        child: TweenAnimationBuilder<double>(
+          key: ValueKey(_i),
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOut,
+          builder: (context, v, child) => Opacity(
+            opacity: v,
+            child: Transform.translate(
+              offset: Offset(24 * (1 - v), 0),
+              child: child,
+            ),
           ),
-        ),
-        child: IndexedStack(
-          index: _i,
-          children: [for (final tb in tabs) tb.page],
+          child: IndexedStack(
+            index: _i,
+            children: [for (final tb in tabs) tb.page],
+          ),
         ),
       ),
       bottomNavigationBar: _LivelyNavBar(

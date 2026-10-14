@@ -37,8 +37,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AuroraBackground(
-        child: ValueListenableBuilder(
+      body: SafeArea(
+        bottom: false,
+        child: AuroraBackground(
+          child: ValueListenableBuilder(
           valueListenable: DB.documents.listenable(),
           builder: (_, __, ___) => ValueListenableBuilder(
             valueListenable: DB.subjects.listenable(),
@@ -82,6 +84,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               );
             },
           ),
+        ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
