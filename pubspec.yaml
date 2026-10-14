@@ -1,7 +1,7 @@
 name: study_assistant
 description: "Study Assistant — مساعد الطالب: AI-powered study app (local-first)."
 publish_to: 'none'
-version: 2.6.0+8
+version: 2.7.0+9
 
 environment:
   sdk: ^3.4.0
