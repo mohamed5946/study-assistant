@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../core/ai.dart';
 import '../core/book_loader.dart';
 import '../core/glass_dialog.dart';
@@ -17,6 +18,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   late TextEditingController _focusC, _breakC, _thrC;
   bool _testing = false;
+  String _version = '';
 
   @override
   void initState() {
@@ -24,6 +26,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _focusC = TextEditingController(text: '${Settings.focusMin}');
     _breakC = TextEditingController(text: '${Settings.breakMin}');
     _thrC = TextEditingController(text: '${Settings.attendanceThreshold}');
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = info.version);
+    });
   }
 
   @override
@@ -164,7 +169,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             SectionHeader(title: t('about')),
-            GlassCard(child: Text(t('aboutText'))),
+            GlassCard(
+              child: Text(
+                _version.isEmpty
+                    ? t('aboutText')
+                    : '${t('appName')} v$_version — ${t('aboutText')}',
+              ),
+            ),
             SectionHeader(title: t('contact')),
             GlassCard(
               child: InkWell(

@@ -428,7 +428,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       // no bottom nav and the dead space looks broken.
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            16, 4, 16, Navigator.canPop(context) ? 16 : 100),
+            16, 4, 16, Navigator.canPop(context) ? 16 : 84),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
