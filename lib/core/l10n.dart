@@ -49,6 +49,10 @@ class L {
       'color': 'اللون',
       'save': 'حفظ',
       'cancel': 'إلغاء',
+      'ok': 'تمام',
+      'contactDeveloper': 'تواصل مع المطور',
+      'contactDeveloperMsg':
+          'عذراً، لا يمكنني الإجابة عن أسئلة تخص برمجة التطبيق أو أسراره. يرجى التواصل مع المطور:',
       'delete': 'حذف',
       'edit': 'تعديل',
       'add': 'إضافة',
@@ -414,6 +418,10 @@ class L {
       'color': 'Color',
       'save': 'Save',
       'cancel': 'Cancel',
+      'ok': 'OK',
+      'contactDeveloper': 'Contact the Developer',
+      'contactDeveloperMsg':
+          'Sorry, I cannot answer questions about the app\'s code or secrets. Please contact the developer:',
       'delete': 'Delete',
       'edit': 'Edit',
       'add': 'Add',

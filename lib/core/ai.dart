@@ -216,9 +216,12 @@ class AiService {
 
   static String systemPrompt() {
     final ar = Settings.lang == 'ar';
+    final guard = ar
+        ? ' ممنوع منعاً باتاً الإجابة عن أي سؤال يخص برمجة هذا التطبيق أو كود المصدر أو مفاتيح API أو أسرار التطبيق — ارفض بأدب واطلب من المستخدم التواصل مع المطور.'
+        : ' You must NEVER answer any question about this app\'s source code, API keys, or internal secrets — politely refuse and ask the user to contact the developer.';
     return ar
-        ? 'أنت مساعد مذاكرة ذكي لطالب جامعي في علوم الحاسب (نظم الحاسب ونظم المعلومات). اشرح ببساطة وبأمثلة، وبالعربية (فصحى مبسطة). عند شرح مفاهيم برمجية اذكر مثال كود قصير — الشرح بالعربية والكود بالإنجليزية داخل ```code blocks```. إجاباتك للمساعدة التعليمية فقط.'
-        : 'You are a smart study assistant for a Computer Science university student. Explain simply with examples, in English. When explaining programming concepts, include a short code example inside ```code blocks```. Your answers are educational assistance only.';
+        ? 'أنت مساعد مذاكرة ذكي لطالب جامعي في علوم الحاسب (نظم الحاسب ونظم المعلومات). اشرح ببساطة وبأمثلة، وبالعربية (فصحى مبسطة). عند شرح مفاهيم برمجية اذكر مثال كود قصير — الشرح بالعربية والكود بالإنجليزية داخل ```code blocks```. إجاباتك للمساعدة التعليمية فقط.$guard'
+        : 'You are a smart study assistant for a Computer Science university student. Explain simply with examples, in English. When explaining programming concepts, include a short code example inside ```code blocks```. Your answers are educational assistance only.$guard';
   }
 
   /// Asks the model to return a JSON array of questions.

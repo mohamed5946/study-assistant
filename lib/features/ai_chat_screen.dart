@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../core/ai.dart';
 import '../core/book_loader.dart';
 import '../core/code_text.dart';
+import '../core/glass_dialog.dart';
 import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
@@ -567,9 +568,93 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
+  /// Keywords that indicate an attempt to extract app internals / IP.
+  static const _sensitivePatterns = [
+    'source code',
+    'سورس كود',
+    'كود المصدر',
+    'كود البرنامج',
+    'كود التطبيق',
+    'api key',
+    'apikey',
+    'مفتاح الـapi',
+    'مفتاح api',
+    'decompile',
+    'فك التطبيق',
+    'هندسة عكسية',
+    'reverse engineer',
+    'app secret',
+    'سر التطبيق',
+    'groq key',
+    'مفتاح groq',
+  ];
+
+  bool _isSensitiveQuery(String text) {
+    final lower = text.toLowerCase();
+    return _sensitivePatterns.any((p) => lower.contains(p.toLowerCase()));
+  }
+
+  /// Shows the "contact the developer" popup for blocked queries.
+  Future<void> _showContactDeveloper() async {
+    await showGlassDialog(
+      context,
+      title: t('contactDeveloper'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            t('contactDeveloperMsg'),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.25),
+              ),
+            ),
+            child: const Column(
+              children: [
+                Text(
+                  r'ENG \ Mohamed EL Sayed',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Phone: +201557887719',
+                  style: TextStyle(fontSize: 14),
+                  textDirection: TextDirection.ltr,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(t('ok')),
+        ),
+      ],
+    );
+  }
+
   Future<void> _send() async {
     final text = _input.text.trim();
     if (text.isEmpty || _sending) return;
+    // IP protection: block attempts to extract app internals.
+    if (_isSensitiveQuery(text)) {
+      _input.clear();
+      _showContactDeveloper();
+      return;
+    }
     final provider = AiService.current();
     if (provider == null) return;
     _input.clear();
