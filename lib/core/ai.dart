@@ -291,6 +291,19 @@ Return ONLY a JSON array, no markdown fences: [{"front":"question/prompt","back"
 ''';
   }
 
+  /// Prompt for generating a mind-map hierarchy from PDF text.
+  static String mindMapPrompt({required bool ar}) {
+    final lang = ar ? 'Arabic' : 'English';
+    return '''
+Create a mind map hierarchy from the PDF text below, in $lang.
+Identify the central topic and up to 6 main branches, each with up to 5 sub-points.
+Return ONLY a JSON object, no markdown fences, no extra text:
+{"topic":"central topic","branches":[{"label":"branch title","children":["point 1","point 2"]}]}
+
+Keep labels short (3-6 words). Focus on key concepts, definitions, and relationships.
+''';
+  }
+
   /// Prompt for solving questions extracted from a questions-PDF, using the
   /// subject's other PDFs as the knowledge base.
   static String solveQuestionsPrompt({required bool ar}) {

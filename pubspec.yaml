@@ -29,6 +29,7 @@ dependencies:
   package_info_plus: ^8.3.0
   share_plus: ^10.1.0
   device_calendar: ^4.3.3
+  flutter_tesseract_ocr: ^0.4.0
 
 dev_dependencies:
   flutter_test:
@@ -47,6 +48,8 @@ flutter:
   assets:
     - assets/fonts/
     - assets/icon/
+    - assets/tessdata/
+    - assets/tessdata_config.json
 
 flutter_launcher_icons:
   android: true

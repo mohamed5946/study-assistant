@@ -18,6 +18,7 @@ import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
 import 'pdf_quiz_screen.dart';
+import 'mind_map_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   final String initialSubjectId;
@@ -290,6 +291,15 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 icon: const Icon(Icons.question_answer_rounded),
                 tooltip: t('askPdf'),
                 onPressed: _askPdf),
+            IconButton(
+                icon: const Icon(Icons.account_tree_rounded),
+                tooltip: t('mindMap'),
+                onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              MindMapScreen(document: widget.doc)),
+                    )),
             IconButton(
                 icon: const Icon(Icons.fact_check_rounded),
                 tooltip: t('selfTest'),
