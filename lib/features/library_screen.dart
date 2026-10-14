@@ -249,6 +249,7 @@ class PdfViewerScreen extends StatefulWidget {
 class _PdfViewerScreenState extends State<PdfViewerScreen> {
   late PdfController _pdf;
   bool _busy = false;
+  String? _ocrProgress;
 
   @override
   void initState() {
@@ -313,7 +314,26 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         ],
       ),
       body: _busy
-          ? const Center(child: BookLoader())
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const BookLoader(),
+                  if (_ocrProgress != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _ocrProgress!,
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            )
           : PdfView(
               controller: _pdf,
               scrollDirection: Axis.vertical,
@@ -335,7 +355,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       count = cfg.$1;
       difficulty = cfg.$2;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _ocrProgress = null;
+    });
     try {
       final ar = Settings.lang == 'ar';
       final bytes = await File(widget.doc.path).readAsBytes();
@@ -353,7 +376,16 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             count: count, difficulty: difficulty, ar: ar);
       }
       final out = await provider.analyzePdf(
-          pdfBytes: bytes, fileName: widget.doc.name, prompt: prompt);
+        pdfBytes: bytes,
+        fileName: widget.doc.name,
+        prompt: prompt,
+        onOcrProgress: (done, total) {
+          if (mounted) {
+            setState(
+                () => _ocrProgress = '${t('ocrProcessing')} $done/$total');
+          }
+        },
+      );
       if (!mounted) return;
       if (kind == 'questions') {
         _handleQuestions(out);
@@ -375,7 +407,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             error: true);
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _ocrProgress = null;
+        });
+      }
     }
   }
 
@@ -420,7 +457,10 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
       if (mounted) showSnack(context, t('noApiKeyMsg'), error: true);
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _ocrProgress = null;
+    });
     try {
       final bytes = await File(widget.doc.path).readAsBytes();
       final out = await provider.analyzePdf(
@@ -428,6 +468,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
         fileName: widget.doc.name,
         prompt: AiService.askPdfPrompt(qC.text.trim(),
             ar: Settings.lang == 'ar'),
+        onOcrProgress: (done, total) {
+          if (mounted) {
+            setState(
+                () => _ocrProgress = '${t('ocrProcessing')} $done/$total');
+          }
+        },
       );
       if (!mounted) return;
       final pages = extractPageCitations(out);
@@ -448,7 +494,12 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             error: true);
       }
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _ocrProgress = null;
+        });
+      }
     }
   }
 

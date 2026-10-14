@@ -1,0 +1,51 @@
+group 'io.paratoner.flutter_tesseract_ocr'
+version '1.0'
+
+// Vendored fork of flutter_tesseract_ocr 0.4.31, modernized for AGP 8+.
+// Upstream pins AGP 7.1.2 and calls jcenter() (removed in modern Gradle),
+// which breaks configuration with AGP 8/9. This copy follows the same
+// pattern as the app's other working plugins (pdfx, share_plus).
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.5.2'
+    }
+
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        flatDir {
+           dirs project(':flutter_tesseract_ocr').file('libs')
+        }
+
+    }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+    namespace "io.paratoner.flutter_tesseract_ocr"
+    compileSdk 34
+
+
+    defaultConfig {
+        minSdk 21
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+    }
+    lint {
+        disable += "InvalidPackage"
+    }
+}
+
+dependencies {
+    api(name: 'tesseract4android-release', ext: 'aar')
+}
