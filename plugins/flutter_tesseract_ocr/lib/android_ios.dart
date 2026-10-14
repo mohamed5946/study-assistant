@@ -2,17 +2,17 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
+
 
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 
 class FlutterTesseractOcr {
-  static const String TESS_DATA_CONFIG = 'assets/tessdata_config.json';
-  static const String TESS_DATA_PATH = 'assets/tessdata';
-  static const MethodChannel _channel =
-      const MethodChannel('flutter_tesseract_ocr');
+  static const String tessDataConfig = 'assets/tessdata_config.json';
+  static const String tessDataPath = 'assets/tessdata';
+  static MethodChannel _channel =
+      MethodChannel('flutter_tesseract_ocr');
 
   /// image to  text
   ///```
@@ -75,11 +75,11 @@ class FlutterTesseractOcr {
 
   static Future _copyTessDataToAppDocumentsDirectory(
       String tessdataDirectory) async {
-    final String config = await rootBundle.loadString(TESS_DATA_CONFIG);
+    final String config = await rootBundle.loadString(tessDataConfig);
     Map<String, dynamic> files = jsonDecode(config);
     for (var file in files["files"]) {
       if (!await File('$tessdataDirectory/$file').exists()) {
-        final ByteData data = await rootBundle.load('$TESS_DATA_PATH/$file');
+        final ByteData data = await rootBundle.load('$tessDataPath/$file');
         final Uint8List bytes = data.buffer.asUint8List(
           data.offsetInBytes,
           data.lengthInBytes,

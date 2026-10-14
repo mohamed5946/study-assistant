@@ -49,13 +49,4 @@ class FlutterTesseractOcr {
   static Future<String> getTessdataPath() async {
     return "";
   }
-
-  //web not support
-  static Future<String> _loadTessData() async {
-    return "";
-  }
-
-  //web not support
-  static Future _copyTessDataToAppDocumentsDirectory(
-      String tessdataDirectory) async {}
 }
