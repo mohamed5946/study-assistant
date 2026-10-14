@@ -25,6 +25,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Branded animated splash (flipping book) shows immediately while the
   // app initializes underneath — replaces the static native splash.
+  final splashStart = DateTime.now();
   runApp(const BookSplash());
   await DB.init();
   await _applyBundledGroqKey();
@@ -32,5 +33,11 @@ Future<void> main() async {
   await Notify.init();
   // refresh home-screen widget with today's classes
   WidgetService.update();
+  // Keep the splash visible for at least 2 seconds from launch.
+  final elapsed = DateTime.now().difference(splashStart);
+  const minSplash = Duration(seconds: 2);
+  if (elapsed < minSplash) {
+    await Future.delayed(minSplash - elapsed);
+  }
   runApp(const StudyApp());
 }
