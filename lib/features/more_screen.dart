@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/l10n.dart';
 import '../core/nav.dart';
 import '../core/theme.dart';
+import '../core/pressable_3d.dart';
 import 'subjects_screen.dart';
 import 'deadlines_screen.dart';
 import 'attendance_screen.dart';
@@ -33,9 +34,7 @@ class _MoreScreenState extends State<MoreScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final page = _pages[v];
-      if (page != null) {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-      }
+      if (page != null) _open(context, page);
     });
   }
 
@@ -57,6 +56,29 @@ class _MoreScreenState extends State<MoreScreen> {
     'scan': const ScanScreen(),
     'settings': const SettingsScreen(),
   };
+
+  /// Opens a page with a soft fade + scale-up entrance.
+  void _open(BuildContext context, Widget page) {
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 220),
+        pageBuilder: (_, __, ___) => page,
+        transitionsBuilder: (_, anim, __, child) {
+          final curved =
+              CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1.0).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -96,35 +118,34 @@ class _MoreScreenState extends State<MoreScreen> {
           itemCount: items.length,
           itemBuilder: (_, i) {
             final it = items[i];
-            return GlassCard(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => _pages[it.key]!),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: it.gradient),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: it.gradient.first.withValues(alpha: 0.35),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+            return Pressable3D(
+              onTap: () => _open(context, _pages[it.key]!),
+              child: GlassCard(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: it.gradient),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: it.gradient.first.withValues(alpha: 0.35),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Icon(it.icon, color: Colors.white, size: 28),
                     ),
-                    child: Icon(it.icon, color: Colors.white, size: 28),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(it.label,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
-                ],
+                    const SizedBox(height: 10),
+                    Text(it.label,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15)),
+                  ],
+                ),
               ),
             );
           },
