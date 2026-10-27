@@ -59,6 +59,7 @@ class L {
       'contactDeveloper': 'تواصل مع المطور',
       'contactDeveloperMsg':
           'عذراً، لا يمكنني الإجابة عن أسئلة تخص برمجة التطبيق أو أسراره. يرجى التواصل مع المطور:',
+      'linkOpenFailed': 'تعذر فتح الرابط:',
       'delete': 'حذف',
       'edit': 'تعديل',
       'add': 'إضافة',
@@ -479,6 +480,7 @@ class L {
       'contactDeveloper': 'Contact the Developer',
       'contactDeveloperMsg':
           'Sorry, I cannot answer questions about the app\'s code or secrets. Please contact the developer:',
+      'linkOpenFailed': 'Could not open the link:',
       'delete': 'Delete',
       'edit': 'Edit',
       'add': 'Add',

@@ -313,6 +313,12 @@ class GlassButton extends StatelessWidget {
 }
 
 /// Aurora background blobs (GPU-cheap, static).
+///
+/// v2.12: copied from the Grok chat mockup — a very pale blue base with
+/// soft blurred radial glows in blue and white only, strongest glow
+/// top-right, a softer glow mid-left and a soft glow low down. Every glow
+/// fades radially to transparent, so no hard circles or visible edges.
+/// Dark theme keeps the same layout in deep blue tones.
 class AuroraBackground extends StatelessWidget {
   final Widget child;
   const AuroraBackground({super.key, required this.child});
@@ -322,20 +328,45 @@ class AuroraBackground extends StatelessWidget {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Stack(
       children: [
+        // Strongest glow, top-right (mockup's dominant glow).
         Positioned(
-          top: -90,
-          right: -70,
-          child: _blob(dark ? AppColors.primary.withValues(alpha: 0.35) : AppColors.primary.withValues(alpha: 0.12), 260),
+          top: -110,
+          right: -80,
+          child: _blob(
+              dark
+                  ? AppColors.primary.withValues(alpha: 0.35)
+                  : AppColors.primary.withValues(alpha: 0.20),
+              320),
         ),
+        // Softer sky-blue glow, mid-left.
         Positioned(
-          top: 120,
-          left: -80,
-          child: _blob(dark ? AppColors.violet.withValues(alpha: 0.30) : AppColors.violet.withValues(alpha: 0.10), 220),
+          top: 180,
+          left: -90,
+          child: _blob(
+              dark
+                  ? AppColors.primaryDark.withValues(alpha: 0.30)
+                  : const Color(0xFF7DD3FC).withValues(alpha: 0.22),
+              280),
         ),
+        // Soft white glow, lower area.
         Positioned(
-          bottom: -60,
-          right: 40,
-          child: _blob(dark ? AppColors.secondary.withValues(alpha: 0.22) : AppColors.secondary.withValues(alpha: 0.10), 200),
+          bottom: -70,
+          left: 60,
+          child: _blob(
+              dark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.white.withValues(alpha: 0.70),
+              260),
+        ),
+        // Pale blue glow, bottom-right.
+        Positioned(
+          bottom: -40,
+          right: -40,
+          child: _blob(
+              dark
+                  ? const Color(0xFF1E3A5F).withValues(alpha: 0.50)
+                  : const Color(0xFFBFDBFE).withValues(alpha: 0.35),
+              220),
         ),
         child,
       ],

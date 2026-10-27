@@ -8,7 +8,9 @@ import '../core/glass_sheet.dart';
 import '../core/grok_glass.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
+import '../core/external_link.dart';
 import '../core/nav.dart';
+import '../core/sensitive_query.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
@@ -58,9 +60,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ],
       ];
 
+  // v2.12: suggested prompts are visible only while the input is empty.
+  bool _inputEmpty = true;
+
+  void _onInputChanged() {
+    final empty = _input.text.trim().isEmpty;
+    if (empty != _inputEmpty && mounted) {
+      setState(() => _inputEmpty = empty);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _inputEmpty = _input.text.trim().isEmpty;
+    _input.addListener(_onInputChanged);
     if (widget.initialPrompt.isNotEmpty) {
       _input.text = widget.initialPrompt;
     }
@@ -68,6 +82,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
 
   @override
   void dispose() {
+    _input.removeListener(_onInputChanged);
     _input.dispose();
     _scroll.dispose();
     _focus.dispose();
@@ -222,7 +237,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   },
                 ),
         ),
-        if (msgs.isNotEmpty) _promptsSection(),
+        if (msgs.isNotEmpty && _inputEmpty) _promptsSection(),
         _inputBar(),
       ],
     );
@@ -349,7 +364,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13)),
             const SizedBox(height: 20),
-            _promptsSection(),
+            if (_inputEmpty) _promptsSection(),
           ],
         ),
       ),
@@ -488,10 +503,13 @@ class _AiChatScreenState extends State<AiChatScreen> {
     return SafeArea(
       top: false,
       // Reserve shell nav-bar space only when tabbed; when pushed there is
-      // no bottom nav and the dead space looks broken.
+      // no bottom nav and the dead space looks broken. The chat Column
+      // already ends at the nav bar's top, so the tabbed gap is just the
+      // nav bar's own bottom margin (12) — v2.12: input sits directly
+      // above the bar instead of floating 84px above it.
       child: Padding(
         padding: EdgeInsets.fromLTRB(
-            16, 4, 16, Navigator.canPop(context) ? 16 : 84),
+            16, 4, 16, Navigator.canPop(context) ? 16 : 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -630,31 +648,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  /// Keywords that indicate an attempt to extract app internals / IP.
-  static const _sensitivePatterns = [
-    'source code',
-    'سورس كود',
-    'كود المصدر',
-    'كود البرنامج',
-    'كود التطبيق',
-    'api key',
-    'apikey',
-    'مفتاح الـapi',
-    'مفتاح api',
-    'decompile',
-    'فك التطبيق',
-    'هندسة عكسية',
-    'reverse engineer',
-    'app secret',
-    'سر التطبيق',
-    'groq key',
-    'مفتاح groq',
-  ];
-
-  bool _isSensitiveQuery(String text) {
-    final lower = text.toLowerCase();
-    return _sensitivePatterns.any((p) => lower.contains(p.toLowerCase()));
-  }
+  /// Gate for questions about this app itself (code, build, internals).
+  /// Logic lives in lib/core/sensitive_query.dart so it is unit-testable;
+  /// bare code-help questions ("اشرح الكود ده") are NOT blocked.
+  bool _isSensitiveQuery(String text) => isSensitiveAppQuery(text);
 
   /// Shows the "contact the developer" popup for blocked queries.
   Future<void> _showContactDeveloper() async {
@@ -695,6 +692,31 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   textDirection: TextDirection.ltr,
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => openPortfolioLink(context),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(Icons.language_rounded,
+                      size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    portfolioUrl,
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary),
+                  ),
+                ],
+              ),
             ),
           ),
         ],

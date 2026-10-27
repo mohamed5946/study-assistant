@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../core/ai.dart';
 import '../core/book_loader.dart';
+import '../core/external_link.dart';
 import '../core/glass_dialog.dart';
 import '../core/l10n.dart';
 import '../core/notify.dart';
@@ -353,6 +354,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ],
+          const SizedBox(height: 6),
+          InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => openPortfolioLink(context),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.language_rounded,
+                      size: 16, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text(
+                    portfolioUrl,
+                    textDirection: TextDirection.ltr,
+                    style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
       actions: [
