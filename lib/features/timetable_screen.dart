@@ -9,6 +9,7 @@ import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/motion.dart';
 import '../core/widget_service.dart';
 import 'timetable_import_screen.dart';
 
@@ -123,7 +124,49 @@ class _TimetableScreenState extends State<TimetableScreen> {
                     return ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                       itemCount: list.length,
-                      itemBuilder: (_, i) => _entryCard(list[i]),
+                      itemBuilder: (_, i) {
+                        final e = list[i];
+                        // v2.9: swipe right = Edit, swipe left = Delete
+                        // (delete still gated by the Yes/No dialog, and
+                        // edit never dismisses the card).
+                        return FadeSlideIn(
+                          index: i,
+                          child: Dismissible(
+                            key: ValueKey(e.id),
+                            // Directional alignment so the revealed
+                            // icon sits on the side the card moved from
+                            // in both RTL (Arabic) and LTR (English).
+                            background: Container(
+                              alignment: AlignmentDirectional.centerStart,
+                              padding: const EdgeInsetsDirectional.only(
+                                  start: 20, bottom: 10),
+                              child: const Icon(Icons.edit_rounded,
+                                  color: AppColors.primary),
+                            ),
+                            secondaryBackground: Container(
+                              alignment: AlignmentDirectional.centerEnd,
+                              padding: const EdgeInsetsDirectional.only(
+                                  end: 20, bottom: 10),
+                              child: const Icon(Icons.delete_rounded,
+                                  color: AppColors.error),
+                            ),
+                            confirmDismiss: (dir) async {
+                              if (dir == DismissDirection.startToEnd) {
+                                _editEntry(e);
+                                return false;
+                              }
+                              if (await confirmDelete(context)) {
+                                await Notify.cancel('class_${e.id}');
+                                await DB.timetable.delete(e.id);
+                                WidgetService.update();
+                                return true;
+                              }
+                              return false;
+                            },
+                            child: _entryCard(e),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),

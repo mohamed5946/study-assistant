@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/glass_sheet.dart';
+import '../core/motion.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -75,7 +76,7 @@ class _SubjectCardState extends State<_SubjectCard> {
         .where((d) => d.subjectId == s.id && !d.done)
         .length;
     return GestureDetector(
-      onTapDown: (_) => setState(() => _scale = 0.97),
+      onTapDown: (_) => setState(() => _scale = 0.96),
       onTapUp: (_) => setState(() => _scale = 1.0),
       onTapCancel: () => setState(() => _scale = 1.0),
       onTap: widget.onTap,
@@ -83,7 +84,14 @@ class _SubjectCardState extends State<_SubjectCard> {
         scale: _scale,
         duration: const Duration(milliseconds: 120),
         curve: Curves.easeOut,
-        child: Container(
+        // v2.9: the whole card flies to the detail header. The flight
+        // child is the plain gradient container (no BackdropFilter) so
+        // the flight stays smooth on mid-range phones.
+        child: Hero(
+          tag: heroTag('subject', s.id),
+          child: Material(
+            type: MaterialType.transparency,
+            child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             gradient: LinearGradient(
@@ -265,6 +273,8 @@ class _SubjectCardState extends State<_SubjectCard> {
                 ),
               ),
             ],
+          ),
+        ),
           ),
         ),
       ),

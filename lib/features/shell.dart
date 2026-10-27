@@ -100,7 +100,7 @@ class _LivelyNavBar extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: dark ? 0.35 : 0.12),
@@ -110,13 +110,14 @@ class _LivelyNavBar extends StatelessWidget {
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            height: 72,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(28),
               color: dark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.white.withValues(alpha: 0.9),
@@ -167,7 +168,7 @@ class _NavItem extends StatefulWidget {
 class _NavItemState extends State<_NavItem> {
   double _pressScale = 1.0;
 
-  void _down(_) => setState(() => _pressScale = 0.88);
+  void _down(_) => setState(() => _pressScale = 0.96);
   void _up(_) => setState(() => _pressScale = 1.0);
   void _cancel() => setState(() => _pressScale = 1.0);
 

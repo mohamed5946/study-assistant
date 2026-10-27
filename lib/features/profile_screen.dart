@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../core/glass_sheet.dart';
+import '../core/motion.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -115,7 +116,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onTap: _pickPhoto,
             child: Stack(
               children: [
-                Container(
+                Hero(
+                  tag: heroTag('profile', 'avatar'),
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
                   width: 88,
                   height: 88,
                   decoration: BoxDecoration(
@@ -140,6 +145,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ? const Icon(Icons.person_rounded,
                           color: Colors.white, size: 44)
                       : null,
+                    ),
+                  ),
                 ),
                 Positioned(
                   bottom: 0,

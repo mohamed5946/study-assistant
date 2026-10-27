@@ -16,6 +16,7 @@ import '../core/models.dart';
 import '../core/schedule_optimizer.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
+import '../core/motion.dart';
 import '../core/widgets.dart';
 import 'pdf_quiz_screen.dart';
 import 'mind_map_screen.dart';
@@ -29,6 +30,8 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   late String _filter;
+  // v2.9: which doc cards have their details expanded (elastic reveal).
+  final _expanded = <String>{};
 
   @override
   void initState() {
@@ -75,11 +78,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             actionLabel: t('importPdf'),
                             onAction: _import,
                           )
-                        : ListView.builder(
-                            padding:
-                                const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                            itemCount: list.length,
-                            itemBuilder: (_, i) => _docRow(list[i]),
+                        : RefreshIndicator(
+                            // Real reload: re-reads the Hive documents
+                            // box and rebuilds the list (no fake data).
+                            onRefresh: () async {
+                              setState(() {});
+                            },
+                            color: AppColors.primary,
+                            child: ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                              itemCount: list.length,
+                              itemBuilder: (_, i) => _docRow(list[i]),
+                            ),
                           ),
                   ),
                 ],
@@ -111,6 +122,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _docRow(StudyDocument d) {
     final sName = DB.subjectName(d.subjectId);
+    final expanded = _expanded.contains(d.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GlassCard(
@@ -118,7 +130,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           context,
           MaterialPageRoute(builder: (_) => PdfViewerScreen(doc: d)),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
           children: [
             Container(
               width: 46,
@@ -151,6 +166,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
             IconButton(
+              icon: Icon(expanded
+                  ? Icons.expand_less_rounded
+                  : Icons.expand_more_rounded),
+              tooltip: t('details'),
+              onPressed: () => setState(() {
+                if (expanded) {
+                  _expanded.remove(d.id);
+                } else {
+                  _expanded.add(d.id);
+                }
+              }),
+            ),
+            IconButton(
               icon: const Icon(Icons.share_rounded),
               tooltip: t('sharePdf'),
               onPressed: () async {
@@ -173,9 +201,35 @@ class _LibraryScreenState extends State<LibraryScreen> {
               },
             ),
           ],
+            ),
+            // v2.9: elastic details reveal — subject + import date,
+            // never a snap. Tapping the card itself still opens the PDF.
+            ElasticReveal(
+              expanded: expanded,
+              children: [
+                const SizedBox(height: 10),
+                Text(
+                  [
+                    if (sName != null) sName,
+                    _importedLabel(d.importedMs),
+                  ].join(' • '),
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                      fontSize: 12),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  String _importedLabel(int ms) {
+    final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+    return '${dt.day}/${dt.month}/${dt.year}';
   }
 
   Future<void> _import() async {

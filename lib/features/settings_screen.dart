@@ -95,6 +95,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
+            SectionHeader(title: t('reduceAnimations')),
+            GlassCard(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.motion_photos_off_rounded,
+                        color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(t('reduceAnimationsHint'))),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: Settings.reduceAnim,
+                    onChanged: (v) {
+                      Settings.reduceAnim = v;
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+            ),
             SectionHeader(title: t('aiStatus')),
             GlassCard(
               child: Row(

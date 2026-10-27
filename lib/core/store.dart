@@ -128,6 +128,20 @@ class Settings {
       DB.kv.get('theme', defaultValue: 'system') as String;
   static set theme(String v) => DB.kv.put('theme', v);
 
+  /// v2.9: when true, every animation in motion.dart returns instantly
+  /// (zero duration, no scale, no haptic, no blur). Default off.
+  /// Safe before DB.init (e.g. the splash screen and widget tests):
+  /// an uninitialized settings box reads as "animations on".
+  static bool get reduceAnim {
+    try {
+      return DB.kv.get('reduceAnim', defaultValue: false) as bool;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  static set reduceAnim(bool v) => DB.kv.put('reduceAnim', v);
+
   /// Bundled Groq config — the single source of AI settings. There is no
   /// provider/key UI anywhere in the app; main.dart applies these from the
   /// build-time --dart-define on every launch.

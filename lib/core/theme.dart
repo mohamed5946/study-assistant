@@ -1,4 +1,8 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
+
+import 'store.dart';
 
 /// Liquid Glass design tokens for Study Assistant.
 /// Masculine light theme: cool blue-gray background, confident blue primary,
@@ -25,13 +29,20 @@ class AppColors {
   static const darkText = Color(0xFFF1F5F9);
   static const darkMuted = Color(0xFF94A3B8);
 
+  // v2.9: blue/teal/green/amber/grey only — the old indigo 0xFF4F46E5
+  // (a violet) was replaced with a pure blue so no violet, purple,
+  // lavender or pink color exists anywhere in the palette.
   static const subjectPalette = <int>[
     0xFF0284C7, 0xFF0D9488, 0xFF0369A1, 0xFF0EA5E9, 0xFF475569, 0xFF16A34A,
-    0xFFF59E0B, 0xFF0891B2, 0xFF4F46E5, 0xFF64748B,
+    0xFFF59E0B, 0xFF0891B2, 0xFF2563EB, 0xFF64748B,
   ];
 }
 
-ThemeData buildTheme(Brightness b) {
+/// v2.9: [lang] selects the font — Cairo for Arabic (bundled), the
+/// system sans for English (no Inter asset ships in this repo, so
+/// bundling Inter would need a new font file; the Android default sans
+/// is the closest available without a new dependency).
+ThemeData buildTheme(Brightness b, {String lang = 'ar'}) {
   final dark = b == Brightness.dark;
   final scheme = ColorScheme(
     brightness: b,
@@ -51,7 +62,10 @@ ThemeData buildTheme(Brightness b) {
     useMaterial3: true,
     brightness: b,
     colorScheme: scheme,
-    fontFamily: 'Cairo',
+    // Cairo carries Arabic; for English the platform sans is used so
+    // Latin text does not render in an Arabic-first face.
+    fontFamily: lang == 'en' ? null : 'Cairo',
+    fontFamilyFallback: const ['Cairo'],
     scaffoldBackgroundColor: dark ? AppColors.darkBg : AppColors.lightBg,
     // Explicit fallbacks so nothing ever renders a light surface in dark
     // mode when a screen/widget falls back to a ThemeData default.
@@ -85,7 +99,7 @@ ThemeData buildTheme(Brightness b) {
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.all(Radius.circular(20)),
+        borderRadius: BorderRadius.all(Radius.circular(24)),
       ),
     ),
     inputDecorationTheme: InputDecorationTheme(
@@ -141,7 +155,12 @@ ThemeData buildTheme(Brightness b) {
   );
 }
 
-/// Frosted-glass card container.
+/// Frosted-glass card container (v2.9 Liquid Glass).
+///
+/// True blur (sigma 22) behind a translucent tint, radius 24, thin white
+/// border, soft shadow. When reduce-animations is on the blur is skipped
+/// (plain translucent card) so the app stays fast on low-end phones.
+/// Hero flight children must NOT use this card — see motion.dart.
 class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -153,7 +172,7 @@ class GlassCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.radius = 20,
+    this.radius = 24,
     this.onTap,
     this.gradient,
   });
@@ -166,7 +185,7 @@ class GlassCard extends StatelessWidget {
         : (dark
             ? Colors.white.withValues(alpha: 0.07)
             : Colors.white.withValues(alpha: 0.75));
-    final content = Container(
+    Widget content = Container(
       padding: padding,
       decoration: BoxDecoration(
         gradient: gradient != null
@@ -194,6 +213,15 @@ class GlassCard extends StatelessWidget {
       ),
       child: child,
     );
+    if (!Settings.reduceAnim) {
+      content = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+          child: content,
+        ),
+      );
+    }
     if (onTap == null) return content;
     return InkWell(
       borderRadius: BorderRadius.circular(radius),
@@ -220,6 +248,11 @@ class GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    // Secondary glass button: dark text on light glass, white on dark.
+    final fg = secondary
+        ? (dark ? Colors.white : AppColors.lightText)
+        : Colors.white;
     return Opacity(
       opacity: onPressed == null ? 0.5 : 1,
       child: InkWell(
@@ -229,10 +262,21 @@ class GlassButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
+            // v2.9: secondary is a plain glass button (no gradient) so
+            // the primary blue gradient stays the single call to action.
+            color: secondary
+                ? (Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.white.withValues(alpha: 0.75))
+                : null,
+            border: secondary
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: 0.85), width: 1)
+                : null,
             gradient: secondary
-                ? const LinearGradient(colors: [AppColors.pink, AppColors.violet])
+                ? null
                 : const LinearGradient(
-                    colors: [AppColors.primary, AppColors.violet]),
+                    colors: [AppColors.primary, AppColors.primaryDark]),
             boxShadow: [
               BoxShadow(
                 color: AppColors.primary.withValues(alpha: 0.35),
@@ -246,13 +290,13 @@ class GlassButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, color: Colors.white, size: 20),
+                Icon(icon, color: fg, size: 20),
                 const SizedBox(width: 8),
               ],
               Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: fg,
                   fontWeight: FontWeight.w700,
                   fontSize: 16,
                   fontFamily: 'Cairo',

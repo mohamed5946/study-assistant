@@ -7,6 +7,7 @@ import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/motion.dart';
 import 'ai_chat_screen.dart';
 import 'flashcards_screen.dart';
 import 'library_screen.dart';
@@ -78,7 +79,13 @@ class SubjectDetailScreen extends StatelessWidget {
   }
 
   Widget _header(Subject s, Color accent) {
-    return Container(
+    // v2.9: destination of the subject-card Hero (same tag, transparent
+    // Material so the flying text stays clean).
+    return Hero(
+      tag: heroTag('subject', s.id),
+      child: Material(
+        type: MaterialType.transparency,
+        child: Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -135,6 +142,8 @@ class SubjectDetailScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

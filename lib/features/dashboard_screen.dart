@@ -6,6 +6,7 @@ import '../core/nav.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/motion.dart';
 import '../core/pressable_3d.dart';
 import 'planner_screen.dart';
 import 'profile_screen.dart';
@@ -110,7 +111,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     fontWeight: FontWeight.w800, fontSize: 24)),
             const SizedBox(height: 14),
             // 3 stat cards
-            Row(
+            FadeSlideIn(
+              index: 1,
+              child: Row(
               children: [
                 Expanded(
                     child: _statCard(
@@ -140,13 +143,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         AppColors.warning)),
               ],
             ),
+            ),
             const SizedBox(height: 14),
             // AI Study Tip card
-            _tipCard(context, studyMin, streak, completedTasks,
-                todayEntries.length),
+            FadeSlideIn(
+              index: 2,
+              child: _tipCard(context, studyMin, streak, completedTasks,
+                  todayEntries.length),
+            ),
             const SizedBox(height: 16),
             SectionHeader(title: t('quickActions')),
-            GridView.count(
+            FadeSlideIn(
+              index: 4,
+              child: GridView.count(
               crossAxisCount: 4,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -173,6 +182,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     AppColors.warning),
               ],
             ),
+            ),
             SectionHeader(
               title: t('upcomingSessions'),
               actionLabel: t('viewAll'),
@@ -187,7 +197,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(t('noClassesToday'))
               ]))
             else
-              ...todayEntries.take(4).map((e) => _classRow(context, e)),
+              ...todayEntries.take(4).toList().asMap().entries.map(
+                    (en) => FadeSlideIn(
+                        index: 6 + en.key,
+                        child: _classRow(context, en.value)),
+                  ),
           ],
         ),
       ),
@@ -206,7 +220,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         MaterialPageRoute(
             builder: (_) => const ProfileScreen()),
       ),
-      child: Container(
+      child: Hero(
+        tag: heroTag('profile', 'avatar'),
+        child: Material(
+          type: MaterialType.transparency,
+          child: Container(
         width: 48,
         height: 48,
         decoration: BoxDecoration(
@@ -229,6 +247,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ? null
             : const Icon(Icons.person_rounded,
                 color: Colors.white, size: 26),
+          ),
+        ),
       ),
     );
   }

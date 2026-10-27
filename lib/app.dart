@@ -15,7 +15,7 @@ class StudyApp extends StatelessWidget {
       valueListenable: L.lang,
       builder: (_, code, __) {
         return ValueListenableBuilder(
-          valueListenable: DB.kv.listenable(keys: ['theme']),
+          valueListenable: DB.kv.listenable(keys: ['theme', 'reduceAnim']),
           builder: (_, ___, ____) {
             final mode = Settings.theme;
             final themeMode = mode == 'light'
@@ -26,8 +26,8 @@ class StudyApp extends StatelessWidget {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
               title: t('appName'),
-              theme: buildTheme(Brightness.light),
-              darkTheme: buildTheme(Brightness.dark),
+              theme: buildTheme(Brightness.light, lang: code),
+              darkTheme: buildTheme(Brightness.dark, lang: code),
               themeMode: themeMode,
               locale: Locale(code),
               supportedLocales: const [Locale('ar'), Locale('en')],
