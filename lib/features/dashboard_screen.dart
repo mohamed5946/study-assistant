@@ -1,3 +1,4 @@
+import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../core/l10n.dart';
@@ -5,6 +6,7 @@ import '../core/models.dart';
 import '../core/nav.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
+import '../core/theme_switch.dart';
 import '../core/widgets.dart';
 import '../core/grok_glass.dart';
 import '../core/motion.dart';
@@ -301,33 +303,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _themeToggle() {
     final dark =
         Theme.of(context).brightness == Brightness.dark;
-    return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () {
-        Settings.theme = dark ? 'light' : 'dark';
-      },
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: dark
-              ? Colors.white.withValues(alpha: 0.10)
-              : Colors.white,
-          shape: BoxShape.circle,
-          border: dark
-              ? Border.all(
-                  color: Colors.white.withValues(alpha: 0.18))
-              : null,
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                blurRadius: 10)
-          ],
+    // v2.13: the switcher wraps the actual 44px toggle button, so the
+    // reveal originates from the button itself (its center is effectively
+    // the finger position at this size).
+    return ThemeSwitcher(
+      builder: (context) => InkWell(
+        borderRadius: BorderRadius.circular(24),
+        onTap: () {
+          final sel = dark ? 'light' : 'dark';
+          final target = themeForSelection(sel,
+              MediaQuery.platformBrightnessOf(context), L.lang.value);
+          if (!shouldAnimateTheme(
+              reduceAnim: Settings.reduceAnim,
+              target: target.brightness,
+              current: dark ? Brightness.dark : Brightness.light)) {
+            Settings.theme = sel;
+          } else {
+            // Persist only when the reveal finishes (see settings).
+            ThemeSwitcher.of(context).changeTheme(
+              theme: target,
+              isReversed: isReversedForTarget(target.brightness),
+              onAnimationFinish: () => Settings.theme = sel,
+            );
+          }
+        },
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: dark
+                ? Colors.white.withValues(alpha: 0.10)
+                : Colors.white,
+            shape: BoxShape.circle,
+            border: dark
+                ? Border.all(
+                    color: Colors.white.withValues(alpha: 0.18))
+                : null,
+            boxShadow: [
+              BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  blurRadius: 10)
+            ],
+          ),
+          child: Icon(
+              dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+              color: dark ? Colors.white : AppColors.primaryDark,
+              size: 20),
         ),
-        child: Icon(
-            dark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-            color: dark ? Colors.white : AppColors.primaryDark,
-            size: 20),
       ),
     );
   }

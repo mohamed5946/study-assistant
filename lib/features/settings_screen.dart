@@ -1,3 +1,4 @@
+import 'package:animated_theme_switcher/animated_theme_switcher.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../core/ai.dart';
@@ -8,6 +9,7 @@ import '../core/l10n.dart';
 import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
+import '../core/theme_switch.dart';
 import '../core/widgets.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -81,26 +83,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
             GlassCard(
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-              child: SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(
-                      value: 'light',
-                      icon: const Icon(Icons.light_mode_rounded, size: 18),
-                      label: Text(t('lightTheme'))),
-                  ButtonSegment(
-                      value: 'dark',
-                      icon: const Icon(Icons.dark_mode_rounded, size: 18),
-                      label: Text(t('darkTheme'))),
-                  ButtonSegment(
-                      value: 'system',
-                      icon: const Icon(Icons.devices_rounded, size: 18),
-                      label: Text(t('systemTheme'))),
-                ],
-                selected: {Settings.theme},
-                onSelectionChanged: (v) {
-                  Settings.theme = v.first;
-                  setState(() {});
-                },
+              // v2.13: the switcher wraps the actual segmented control, so
+              // the circular reveal originates from the toggle itself.
+              child: ThemeSwitcher(
+                builder: (context) => SegmentedButton<String>(
+                  segments: [
+                    ButtonSegment(
+                        value: 'light',
+                        icon: const Icon(Icons.light_mode_rounded, size: 18),
+                        label: Text(t('lightTheme'))),
+                    ButtonSegment(
+                        value: 'dark',
+                        icon: const Icon(Icons.dark_mode_rounded, size: 18),
+                        label: Text(t('darkTheme'))),
+                    ButtonSegment(
+                        value: 'system',
+                        icon: const Icon(Icons.devices_rounded, size: 18),
+                        label: Text(t('systemTheme'))),
+                  ],
+                  selected: {Settings.theme},
+                  onSelectionChanged: (v) {
+                    final sel = v.first;
+                    final current =
+                        Theme.of(context).brightness;
+                    final target = themeForSelection(
+                        sel,
+                        MediaQuery.platformBrightnessOf(context),
+                        L.lang.value);
+                    if (!shouldAnimateTheme(
+                        reduceAnim: Settings.reduceAnim,
+                        target: target.brightness,
+                        current: current)) {
+                      // Reduced motion, or no visible change (e.g.
+                      // picking 'system' when the OS already matches):
+                      // persist instantly, no reveal.
+                      Settings.theme = sel;
+                    } else {
+                      // Persist ONLY when the reveal finishes: persisting
+                      // earlier would rebuild the app mid-animation and
+                      // break the package's screenshot/clip trick.
+                      ThemeSwitcher.of(context).changeTheme(
+                        theme: target,
+                        isReversed:
+                            isReversedForTarget(target.brightness),
+                        onAnimationFinish: () {
+                          Settings.theme = sel;
+                          if (mounted) setState(() {});
+                        },
+                      );
+                    }
+                    setState(() {});
+                  },
+                ),
               ),
             ),
             SectionHeader(title: t('reduceAnimations')),
