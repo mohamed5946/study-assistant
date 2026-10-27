@@ -5,6 +5,7 @@ import '../core/book_loader.dart';
 import '../core/code_text.dart';
 import '../core/glass_dialog.dart';
 import '../core/glass_sheet.dart';
+import '../core/grok_glass.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/nav.dart';
@@ -236,18 +237,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13)),
             const SizedBox(height: 20),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              alignment: WrapAlignment.center,
-              children: [
-                _csSuggestion(
-                    t('explainThisCode'), '${t('explainThisCode')}:\n'),
-                _csSuggestion(
-                    t('helpMeDebug'), '${t('helpMeDebug')}:\n'),
-                _csSuggestion(
-                    t('practicalExample'), '${t('practicalExample')}: '),
+            // v2.10: suggested prompts as a real row whose chips call
+            // back with the prompt (Grok's version declared the callback
+            // but never rendered the chips).
+            SuggestedPromptsRow(
+              prompts: [
+                (label: t('explainThisCode'),
+                    prompt: '${t('explainThisCode')}:\n'),
+                (label: t('helpMeDebug'),
+                    prompt: '${t('helpMeDebug')}:\n'),
+                (label: t('practicalExample'),
+                    prompt: '${t('practicalExample')}: '),
               ],
+              onSuggestedPrompt: (prompt) {
+                _input.text = prompt;
+                _input.selection = TextSelection.fromPosition(
+                    TextPosition(offset: _input.text.length));
+                _focus.requestFocus();
+              },
             ),
           ],
         ),
@@ -255,44 +262,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
     );
   }
 
-  /// CS suggestion chip: fills the input with the prompt and focuses it
-  /// so the user can paste his code / topic, then hit send.
-  Widget _csSuggestion(String label, String prefix) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        _input.text = prefix;
-        _input.selection = TextSelection.fromPosition(
-            TextPosition(offset: _input.text.length));
-        _focus.requestFocus();
-      },
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.white.withValues(alpha: 0.10)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.06),
-                blurRadius: 8,
-                offset: const Offset(0, 3)),
-          ],
-        ),
-        child: Text(label,
-            style: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : AppColors.primaryDark,
-                fontWeight: FontWeight.w600,
-                fontSize: 13)),
-      ),
-    );
-  }
 
   Widget _thinkingBubble() {
     return Align(

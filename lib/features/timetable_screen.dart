@@ -273,6 +273,13 @@ class _TimetableScreenState extends State<TimetableScreen> {
                 ],
               ),
             ),
+            // v2.10: present/absent for TODAY's classes only, using the
+            // existing AttendanceRecord store (same pattern as the
+            // attendance screen: one record per entry per day).
+            if (_weekday == DateTime.now().weekday) ...[
+              _attendanceButton(e, 1),
+              _attendanceButton(e, 0),
+            ],
             IconButton(
               icon: const Icon(Icons.event_rounded),
               tooltip: t('addToCalendar'),
@@ -294,6 +301,55 @@ class _TimetableScreenState extends State<TimetableScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Attendance toggle for one entry on one day. The selected button is
+  /// filled; tapping re-marks (replacing the day's record for this entry).
+  Widget _attendanceButton(TimetableEntry e, int status) {
+    // Rebuilds when attendance changes so the selected state updates
+    // immediately after a tap (the timetable list itself does not listen
+    // to the attendance box).
+    return ValueListenableBuilder(
+      valueListenable: DB.attendance.listenable(),
+      builder: (_, __, ___) {
+        final dayMs = dayStartMs(DateTime.now());
+        final existing = DB.attendance.values.where(
+            (r) => r.entryId == e.id && r.dayMs == dayMs);
+        final selected = existing.any((r) => r.status == status);
+        final isPresent = status == 1;
+        return IconButton(
+          // Compact hit targets: the row now carries five icon buttons
+          // (present/absent/calendar/edit/delete), so default 48dp
+          // targets would crowd a narrow phone and squeeze the title.
+          visualDensity: VisualDensity.compact,
+          padding: const EdgeInsets.all(4),
+          constraints:
+              const BoxConstraints(minWidth: 36, minHeight: 36),
+          icon: Icon(
+            isPresent ? Icons.check_circle_rounded : Icons.cancel_rounded,
+            color: selected
+                ? (isPresent ? AppColors.success : AppColors.error)
+                : Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          tooltip: isPresent ? t('present') : t('absent'),
+          onPressed: () async {
+            for (final r in existing) {
+              await DB.attendance.delete(r.id);
+            }
+            final id = newId();
+            await DB.attendance.put(
+              id,
+              AttendanceRecord(
+                  id: id,
+                  subjectId: e.subjectId,
+                  entryId: e.id,
+                  dayMs: dayMs,
+                  status: status),
+            );
+          },
+        );
+      },
     );
   }
 

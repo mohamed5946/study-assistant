@@ -34,9 +34,10 @@ Future<T?> showGlassDialog<T>(
             child: Transform.scale(scale: scale, child: child),
           );
         },
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Dialog(
+        child: RepaintBoundary(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: Dialog(
           backgroundColor: Colors.transparent,
           elevation: 0,
           insetPadding:
@@ -129,6 +130,7 @@ Future<T?> showGlassDialog<T>(
               ],
             ),
           ),
+        ),
         ),
         ),
       );

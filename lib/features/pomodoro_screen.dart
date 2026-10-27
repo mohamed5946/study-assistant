@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../core/grok_glass.dart';
 import '../core/l10n.dart';
 import '../core/models.dart';
 import '../core/store.dart';
@@ -17,9 +18,19 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   Timer? _timer;
   int _remaining = 25 * 60;
   bool _running = false;
-  bool _isBreak = false;
+  // v2.10: three phases (mockup) instead of a focus/break toggle — every
+  // 4th finished focus session earns a long break (see nextPomodoroPhase).
+  PomodoroPhase _phase = PomodoroPhase.focus;
+  int _focusCount = 0;
   String _subjectId = '';
   int _startedMs = 0;
+
+  int get _phaseMinutes => pomodoroPhaseMinutes(
+        _phase,
+        focusMin: Settings.focusMin,
+        breakMin: Settings.breakMin,
+        longBreakMin: Settings.longBreakMin,
+      );
 
   @override
   void initState() {
@@ -44,7 +55,8 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
 
   Future<void> _finishPhase() async {
     _timer?.cancel();
-    if (!_isBreak) {
+    var next = _phase;
+    if (_phase == PomodoroPhase.focus) {
       final id = newId();
       await DB.pomodoro.put(
         id,
@@ -58,12 +70,22 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
         ),
       );
       if (mounted) showSnack(context, t('sessionSaved'));
+      _focusCount++;
+      next = nextPomodoroPhase(
+          wasFocus: true, finishedFocusCount: _focusCount);
+    } else {
+      next = PomodoroPhase.focus;
     }
     setState(() {
-      _isBreak = !_isBreak;
+      _phase = next;
       _running = false;
-      _remaining =
-          (_isBreak ? Settings.breakMin : Settings.focusMin) * 60;
+      _remaining = pomodoroPhaseMinutes(
+            next,
+            focusMin: Settings.focusMin,
+            breakMin: Settings.breakMin,
+            longBreakMin: Settings.longBreakMin,
+          ) *
+          60;
     });
   }
 
@@ -73,8 +95,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
       setState(() => _running = false);
     } else {
       if (_remaining <= 0) {
-        _remaining =
-            (_isBreak ? Settings.breakMin : Settings.focusMin) * 60;
+        _remaining = _phaseMinutes * 60;
       }
       if (_startedMs == 0) {
         _startedMs = DateTime.now().millisecondsSinceEpoch;
@@ -89,8 +110,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
     setState(() {
       _running = false;
       _startedMs = 0;
-      _remaining =
-          (_isBreak ? Settings.breakMin : Settings.focusMin) * 60;
+      _remaining = _phaseMinutes * 60;
     });
   }
 
@@ -98,10 +118,19 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
   Widget build(BuildContext context) {
     final mm = (_remaining ~/ 60).toString().padLeft(2, '0');
     final ss = (_remaining % 60).toString().padLeft(2, '0');
-    final totalSec =
-        (_isBreak ? Settings.breakMin : Settings.focusMin) * 60;
+    final totalSec = _phaseMinutes * 60;
     final progress =
         totalSec > 0 ? 1 - _remaining / totalSec : 0.0;
+    final phaseLabel = _phase == PomodoroPhase.focus
+        ? t('focusPhase')
+        : _phase == PomodoroPhase.shortBreak
+            ? t('shortBreak')
+            : t('longBreak');
+    final ringColor = _phase == PomodoroPhase.focus
+        ? AppColors.primary
+        : _phase == PomodoroPhase.shortBreak
+            ? AppColors.success
+            : AppColors.secondary;
 
     return Scaffold(
       appBar: AppBar(title: Text(t('pomodoro'))),
@@ -120,19 +149,30 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                 GlassCard(
                   child: Column(
                     children: [
-                      SegmentedButton<bool>(
+                      SegmentedButton<PomodoroPhase>(
+                        // Compact text: three Arabic labels must fit a
+                        // narrow phone without overflowing the segment row.
+                        style: const ButtonStyle(
+                          visualDensity: VisualDensity(
+                              horizontal: -2, vertical: -2),
+                          textStyle: WidgetStatePropertyAll(
+                              TextStyle(fontSize: 12)),
+                        ),
                         segments: [
                           ButtonSegment(
-                              value: false,
+                              value: PomodoroPhase.focus,
                               label: Text(t('focusTime'))),
                           ButtonSegment(
-                              value: true,
-                              label: Text(t('breakTime'))),
+                              value: PomodoroPhase.shortBreak,
+                              label: Text(t('shortBreak'))),
+                          ButtonSegment(
+                              value: PomodoroPhase.longBreak,
+                              label: Text(t('longBreak'))),
                         ],
-                        selected: {_isBreak},
+                        selected: {_phase},
                         onSelectionChanged: (s) {
+                          setState(() => _phase = s.first);
                           _reset();
-                          setState(() => _isBreak = s.first);
                         },
                       ),
                       const SizedBox(height: 16),
@@ -150,15 +190,31 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                                 strokeWidth: 14,
                                 backgroundColor: AppColors.primary
                                     .withValues(alpha: 0.12),
-                                color: _isBreak
-                                    ? AppColors.success
-                                    : AppColors.primary,
+                                color: ringColor,
                               ),
                             ),
-                            Text('$mm:$ss',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 48)),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('$mm:$ss',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 48)),
+                                // v2.10: the phase is labelled, not just a
+                                // number — focus / short break / long break.
+                                Text(phaseLabel,
+                                    style: TextStyle(
+                                        color: ringColor,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14)),
+                                Text('$_focusCount / 4',
+                                    style: TextStyle(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                        fontSize: 12)),
+                              ],
+                            ),
                           ],
                         ),
                       ),
@@ -185,11 +241,7 @@ class _PomodoroScreenState extends State<PomodoroScreen> {
                           GlassButton(
                             label: _running
                                 ? t('pause')
-                                : (_remaining <
-                                            (_isBreak
-                                                    ? Settings.breakMin
-                                                    : Settings.focusMin) *
-                                                60 &&
+                                : (_remaining < _phaseMinutes * 60 &&
                                         _remaining > 0
                                     ? t('resume')
                                     : t('start')),

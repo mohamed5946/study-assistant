@@ -16,7 +16,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late TextEditingController _focusC, _breakC, _thrC;
+  late TextEditingController _focusC, _breakC, _longBreakC, _thrC;
   bool _testing = false;
   String _version = '';
 
@@ -25,6 +25,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _focusC = TextEditingController(text: '${Settings.focusMin}');
     _breakC = TextEditingController(text: '${Settings.breakMin}');
+    _longBreakC =
+        TextEditingController(text: '${Settings.longBreakMin}');
     _thrC = TextEditingController(text: '${Settings.attendanceThreshold}');
     PackageInfo.fromPlatform().then((info) {
       if (mounted) setState(() => _version = info.version);
@@ -35,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void dispose() {
     _focusC.dispose();
     _breakC.dispose();
+    _longBreakC.dispose();
     _thrC.dispose();
     super.dispose();
   }
@@ -149,33 +152,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             SectionHeader(title: t('pomodoro')),
             GlassCard(
-              child: Row(
+              child: Column(
                 children: [
-                  Expanded(
-                      child: TextField(
-                          controller: _focusC,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                              labelText: t('focusMin')),
-                          onChanged: (v) {
-                            final n = int.tryParse(v);
-                            if (n != null && n > 0) {
-                              Settings.focusMin = n;
-                            }
-                          })),
-                  const SizedBox(width: 10),
-                  Expanded(
-                      child: TextField(
-                          controller: _breakC,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                              labelText: t('breakMin')),
-                          onChanged: (v) {
-                            final n = int.tryParse(v);
-                            if (n != null && n > 0) {
-                              Settings.breakMin = n;
-                            }
-                          })),
+                  Row(
+                    children: [
+                      Expanded(
+                          child: TextField(
+                              controller: _focusC,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                  labelText: t('focusMin')),
+                              onChanged: (v) {
+                                final n = int.tryParse(v);
+                                if (n != null && n > 0) {
+                                  Settings.focusMin = n;
+                                }
+                              })),
+                      const SizedBox(width: 10),
+                      Expanded(
+                          child: TextField(
+                              controller: _breakC,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                  labelText: t('breakMin')),
+                              onChanged: (v) {
+                                final n = int.tryParse(v);
+                                if (n != null && n > 0) {
+                                  Settings.breakMin = n;
+                                }
+                              })),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                      controller: _longBreakC,
+                      keyboardType: TextInputType.number,
+                      decoration:
+                          InputDecoration(labelText: t('longBreakMin')),
+                      onChanged: (v) {
+                        final n = int.tryParse(v);
+                        if (n != null && n > 0) {
+                          Settings.longBreakMin = n;
+                        }
+                      }),
                 ],
               ),
             ),

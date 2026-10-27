@@ -388,9 +388,73 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 ],
               ),
             )
-          : PdfView(
-              controller: _pdf,
-              scrollDirection: Axis.vertical,
+          : Column(
+              children: [
+                Expanded(
+                  child: PdfView(
+                    controller: _pdf,
+                    scrollDirection: Axis.vertical,
+                  ),
+                ),
+                // v2.10: page navigation — the page number is a control,
+                // not display-only text (Grok StudyUI showed it statically).
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left_rounded),
+                        onPressed: () {
+                          final p = _pdf.page;
+                          if (p > 1) _pdf.jumpToPage(p - 1);
+                        },
+                      ),
+                      ValueListenableBuilder<int>(
+                        valueListenable: _pdf.pageListenable,
+                        builder: (_, page, ___) => FutureBuilder(
+                          future: _pdf.document,
+                          builder: (_, snap) {
+                            final total =
+                                snap.hasData ? snap.data!.pagesCount : null;
+                            return Text(
+                              total == null
+                                  ? '$page'
+                                  : '$page / $total',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700),
+                            );
+                          },
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right_rounded),
+                        onPressed: () async {
+                          final doc = await _pdf.document;
+                          final p = _pdf.page;
+                          if (p < doc.pagesCount) {
+                            _pdf.jumpToPage(p + 1);
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
     );
   }

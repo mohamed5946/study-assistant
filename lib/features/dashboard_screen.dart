@@ -6,6 +6,7 @@ import '../core/nav.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
+import '../core/grok_glass.dart';
 import '../core/motion.dart';
 import '../core/pressable_3d.dart';
 import 'planner_screen.dart';
@@ -88,8 +89,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+                          // v2.10 clarification: the demo/placeholder
+                          // greeting name is Mohamed (محمد in Arabic) —
+                          // never the mockups' يوسف/Alex placeholders.
                           Settings.profileName.trim().isEmpty
-                              ? greet
+                              ? '$greet، ${Settings.lang == 'ar' ? 'محمد' : 'Mohamed'}'
                               : '$greet، ${Settings.profileName.trim()}',
                           style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 17)),
@@ -152,6 +156,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   todayEntries.length),
             ),
             const SizedBox(height: 16),
+            // v2.10: gradient next-lecture card (mockup) from REAL data.
+            if (_nextEntry(todayEntries, now) != null)
+              FadeSlideIn(
+                index: 3,
+                child: _nextLectureCard(
+                    context, _nextEntry(todayEntries, now)!, now),
+              ),
+            if (_nextEntry(todayEntries, now) != null)
+              const SizedBox(height: 16),
             SectionHeader(title: t('quickActions')),
             FadeSlideIn(
               index: 4,
@@ -205,6 +218,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Next class today that has not ended yet: an in-progress class first,
+  /// otherwise the nearest upcoming one. Null when the day is over.
+  TimetableEntry? _nextEntry(List<TimetableEntry> today, DateTime now) {
+    final m = now.hour * 60 + now.minute;
+    final upcoming = today.where((e) => e.endMin > m).toList();
+    if (upcoming.isEmpty) return null;
+    upcoming.sort((a, b) => a.startMin.compareTo(b.startMin));
+    return upcoming.first;
+  }
+
+  Widget _nextLectureCard(
+      BuildContext context, TimetableEntry e, DateTime now) {
+    final m = now.hour * 60 + now.minute;
+    final ar = Settings.lang == 'ar';
+    final status = e.startMin <= m
+        ? (ar ? 'جارية الآن' : 'Now')
+        : (ar
+            ? 'بعد ${e.startMin - m} ${t('minutesShort')}'
+            : 'in ${e.startMin - m} ${t('minutesShort')}');
+    return NextLectureCard(
+      title: DB.subjectName(e.subjectId) ?? '—',
+      kindLabel: e.kind == 0 ? t('lecture') : t('section'),
+      timeLabel:
+          '${formatClock(e.startMin)} - ${formatClock(e.endMin)}',
+      place: e.place.isNotEmpty ? e.place : null,
+      statusText: status,
+      onTap: () => TabNav.go(1),
     );
   }
 
@@ -452,12 +495,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: const TextStyle(
                           fontWeight: FontWeight.w700, fontSize: 15)),
                   Text(
-                      '${e.kind == 0 ? t('lecture') : t('section')} • ${formatClock(e.startMin)} - ${formatClock(e.endMin)}${e.place.isNotEmpty ? ' • ${e.place}' : ''}',
+                      '${e.kind == 0 ? t('lecture') : t('section')} • ${formatClock(e.startMin)} - ${formatClock(e.endMin)}',
                       style: TextStyle(
                           color: Theme.of(context)
                               .colorScheme
                               .onSurfaceVariant,
                           fontSize: 12)),
+                  // v2.10: room as a chip (mockup), not buried in text.
+                  if (e.place.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    RoomChip(room: e.place),
+                  ],
                 ],
               ),
             ),

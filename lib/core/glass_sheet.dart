@@ -23,10 +23,11 @@ Future<T?> showGlassSheet<T>(
       final theme = Theme.of(sheetCtx);
       final dark = theme.brightness == Brightness.dark;
       final kb = MediaQuery.of(sheetCtx).viewInsets.bottom;
-      return BackdropFilter(
-        // blur of the page behind the sheet
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Padding(
+      return RepaintBoundary(
+        child: BackdropFilter(
+          // blur of the page behind the sheet
+          filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+          child: Padding(
           padding: EdgeInsets.only(
             left: 8,
             right: 8,
@@ -133,6 +134,7 @@ Future<T?> showGlassSheet<T>(
               ),
             ),
           ),
+        ),
         ),
       );
     },

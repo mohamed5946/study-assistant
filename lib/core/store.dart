@@ -162,6 +162,10 @@ class Settings {
   static int get breakMin => DB.kv.get('breakMin', defaultValue: 5) as int;
   static set breakMin(int v) => DB.kv.put('breakMin', v);
 
+  static int get longBreakMin =>
+      DB.kv.get('longBreakMin', defaultValue: 15) as int;
+  static set longBreakMin(int v) => DB.kv.put('longBreakMin', v);
+
   static int get attendanceThreshold =>
       DB.kv.get('attendanceThreshold', defaultValue: 75) as int;
   static set attendanceThreshold(int v) =>
