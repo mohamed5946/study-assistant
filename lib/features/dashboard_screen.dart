@@ -9,9 +9,7 @@ import '../core/widgets.dart';
 import '../core/grok_glass.dart';
 import '../core/motion.dart';
 import '../core/pressable_3d.dart';
-import 'planner_screen.dart';
 import 'profile_screen.dart';
-import 'scan_screen.dart';
 
 /// Home screen per mockup: greeting row, headline, 3 stat cards,
 /// AI Study Tip card, Quick Actions grid, Upcoming Sessions.
@@ -114,6 +112,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 style: const TextStyle(
                     fontWeight: FontWeight.w800, fontSize: 24)),
             const SizedBox(height: 14),
+            // v2.10: gradient next-lecture card (mockup) from REAL data.
+            if (_nextEntry(todayEntries, now) != null)
+              FadeSlideIn(
+                index: 3,
+                child: _nextLectureCard(
+                    context, _nextEntry(todayEntries, now)!, now),
+              ),
+            if (_nextEntry(todayEntries, now) != null)
+              const SizedBox(height: 16),
+            SectionHeader(title: t('quickActions')),
+            FadeSlideIn(
+              index: 4,
+              child: Row(
+                children: [
+                  Expanded(
+                      child: _mockupQa(
+                          context,
+                          Icons.auto_awesome_rounded,
+                          t('askAi'),
+                          () => TabNav.go(2),
+                          AppColors.primary)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _mockupQa(
+                          context,
+                          Icons.upload_file_rounded,
+                          t('uploadPdf'),
+                          () => TabNav.go(3),
+                          AppColors.primaryDark)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                      child: _mockupQa(
+                          context,
+                          Icons.add_circle_outline_rounded,
+                          t('addLecture'),
+                          () => TabNav.go(1),
+                          AppColors.secondary)),
+                ],
+              ),
+            ),
+            SectionHeader(
+              title: t('todaysLectures'),
+              actionLabel: t('viewAll'),
+              onAction: () => TabNav.go(1),
+            ),
+            if (todayEntries.isEmpty)
+              GlassCard(
+                  child: Row(children: [
+                const Icon(Icons.celebration_rounded,
+                    color: AppColors.warning),
+                const SizedBox(width: 10),
+                Text(t('noClassesToday'))
+              ]))
+            else
+              ...todayEntries.asMap().entries.map(
+                    (en) => FadeSlideIn(
+                        index: 6 + en.key,
+                        child: _timelineRow(context, en.value)),
+                  ),
+            // v2.11: stats + tip relocated below the timeline (mockup
+            // home has no stats row) — never deleted.
+            SectionHeader(title: t('todayStats')),
             // 3 stat cards
             FadeSlideIn(
               index: 1,
@@ -156,65 +216,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   todayEntries.length),
             ),
             const SizedBox(height: 16),
-            // v2.10: gradient next-lecture card (mockup) from REAL data.
-            if (_nextEntry(todayEntries, now) != null)
-              FadeSlideIn(
-                index: 3,
-                child: _nextLectureCard(
-                    context, _nextEntry(todayEntries, now)!, now),
-              ),
-            if (_nextEntry(todayEntries, now) != null)
-              const SizedBox(height: 16),
-            SectionHeader(title: t('quickActions')),
-            FadeSlideIn(
-              index: 4,
-              child: GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 0.92,
-              children: [
-                _qa(context, Icons.auto_awesome_rounded, t('aiChat'),
-                    () => TabNav.go(2), AppColors.primary),
-                _qa(context, Icons.timer_rounded, t('focusTimer'),
-                    () => TabNav.go(4, more: 'pomodoro'),
-                    AppColors.secondary),
-                _qa(context, Icons.calendar_month_rounded, t('studyPlanner'),
-                    () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const PlannerScreen())),
-                    AppColors.primaryDark),
-                _qa(context, Icons.document_scanner_rounded, t('scanQuestion'),
-                    () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const ScanScreen())),
-                    AppColors.warning),
-              ],
-            ),
-            ),
-            SectionHeader(
-              title: t('upcomingSessions'),
-              actionLabel: t('viewAll'),
-              onAction: () => TabNav.go(1),
-            ),
-            if (todayEntries.isEmpty)
-              GlassCard(
-                  child: Row(children: [
-                const Icon(Icons.celebration_rounded,
-                    color: AppColors.warning),
-                const SizedBox(width: 10),
-                Text(t('noClassesToday'))
-              ]))
-            else
-              ...todayEntries.take(4).toList().asMap().entries.map(
-                    (en) => FadeSlideIn(
-                        index: 6 + en.key,
-                        child: _classRow(context, en.value)),
-                  ),
+
           ],
         ),
       ),
@@ -441,18 +443,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _qa(BuildContext context, IconData icon, String label,
+  Widget _mockupQa(BuildContext context, IconData icon, String label,
       VoidCallback onTap, Color color) {
     return Pressable3D(
       onTap: onTap,
       child: GlassCard(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(15),
@@ -464,56 +466,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
     );
   }
 
-  Widget _classRow(BuildContext context, TimetableEntry e) {
+  /// Mockup timeline row: time spine on one side, title + place in the
+  /// middle, room chip. Driven by real timetable data only.
+  Widget _timelineRow(BuildContext context, TimetableEntry e) {
     final c = Color(DB.subjectColor(e.subjectId));
     final name = DB.subjectName(e.subjectId) ?? '—';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GlassCard(
-        onTap: () => TabNav.go(1),
-        child: Row(
-          children: [
-            Container(
-                width: 6,
-                height: 52,
-                decoration: BoxDecoration(
-                    color: c, borderRadius: BorderRadius.circular(6))),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
-                  Text(
-                      '${e.kind == 0 ? t('lecture') : t('section')} • ${formatClock(e.startMin)} - ${formatClock(e.endMin)}',
-                      style: TextStyle(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                          fontSize: 12)),
-                  // v2.10: room as a chip (mockup), not buried in text.
-                  if (e.place.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    RoomChip(room: e.place),
-                  ],
-                ],
-              ),
-            ),
-            Icon(Icons.chevron_right_rounded,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ],
-        ),
-      ),
+    final kind = e.kind == 0 ? t('lecture') : t('section');
+    return TimelineClassRow(
+      startLabel: formatClock(e.startMin),
+      endLabel: formatClock(e.endMin),
+      title: name,
+      subtitle: e.place.isNotEmpty ? e.place : kind,
+      room: e.place.isNotEmpty ? e.place : null,
+      color: c,
+      onTap: () => TabNav.go(1),
     );
   }
+
 }

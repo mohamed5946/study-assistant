@@ -13,6 +13,7 @@ import '../core/glass_sheet.dart';
 import '../core/l10n.dart';
 import '../core/logic.dart';
 import '../core/models.dart';
+import '../core/ocr.dart';
 import '../core/schedule_optimizer.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
@@ -390,6 +391,30 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             )
           : Column(
               children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GlassButton(
+                          label: t('ocrScan'),
+                          icon: Icons.document_scanner_rounded,
+                          onPressed: _busy ? null : _ocrScan,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GlassButton(
+                          label: t('generateExam'),
+                          icon: Icons.quiz_rounded,
+                          secondary: true,
+                          onPressed:
+                              _busy ? null : () => _aiAction('questions'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 Expanded(
                   child: PdfView(
                     controller: _pdf,
@@ -454,9 +479,103 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                     ],
                   ),
                 ),
+                _mindMapCard(),
               ],
             ),
     );
+  }
+
+  /// Mockup mind-map section under the viewer, wired to the
+  /// existing interactive MindMapScreen (not a duplicate map).
+  Widget _mindMapCard() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      child: GlassCard(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => MindMapScreen(document: widget.doc)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.account_tree_rounded,
+                  color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t('mindMapSection'),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(t('openMindMap'),
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_left_rounded,
+                color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Mockup OCR Scan button: runs the existing on-device Tesseract
+  /// OCR over the document and shows the extracted text.
+  Future<void> _ocrScan() async {
+    setState(() {
+      _busy = true;
+      _ocrProgress = t('ocrProcessing');
+    });
+    try {
+      final bytes = await File(widget.doc.path).readAsBytes();
+      final out = await Ocr.extractFromPdf(
+        bytes,
+        onProgress: (done, total) {
+          if (mounted) {
+            setState(() => _ocrProgress =
+                '${t('ocrProcessing')} $done/$total');
+          }
+        },
+      );
+      if (!mounted) return;
+      if (out.isEmpty) {
+        showSnack(context, t('ocrEmpty'), error: true);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AiResultScreen(
+              title: t('ocrScan'),
+              text: out,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showSnack(context, t('sendFailed'), error: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _ocrProgress = null;
+        });
+      }
+    }
   }
 
   Future<void> _aiAction(String kind) async {

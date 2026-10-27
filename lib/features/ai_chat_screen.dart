@@ -31,6 +31,32 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _focus = FocusNode();
   bool _sending = false;
   bool _deepThink = false;
+  // v2.11: mockup suggested-prompt sets, cycled by the Refresh button.
+  int _promptSet = 0;
+
+  List<List<({String label, String prompt})>> get _promptSets => [
+        [
+          (label: t('summarizeTopic'), prompt: '${t('summarizeTopic')}: '),
+          (label: t('practiceQuestions'),
+              prompt: '${t('practiceQuestions')}: '),
+          (label: t('explainWithDiagram'),
+              prompt: '${t('explainWithDiagram')}: '),
+        ],
+        [
+          (label: t('explainThisCode'),
+              prompt: '${t('explainThisCode')}:\n'),
+          (label: t('helpMeDebug'), prompt: '${t('helpMeDebug')}:\n'),
+          (label: t('practicalExample'),
+              prompt: '${t('practicalExample')}: '),
+        ],
+        [
+          (label: t('summarizeTopic'), prompt: '${t('summarizeTopic')}: '),
+          (label: t('explainThisCode'),
+              prompt: '${t('explainThisCode')}:\n'),
+          (label: t('practiceQuestions'),
+              prompt: '${t('practiceQuestions')}: '),
+        ],
+      ];
 
   @override
   void initState() {
@@ -182,6 +208,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       ..sort((a, b) => a.createdMs.compareTo(b.createdMs));
     return Column(
       children: [
+        _todayChip(),
         Expanded(
           child: msgs.isEmpty
               ? _emptyState()
@@ -195,8 +222,83 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   },
                 ),
         ),
+        if (msgs.isNotEmpty) _promptsSection(),
         _inputBar(),
       ],
+    );
+  }
+
+  Widget _todayChip() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Center(
+        child: Container(
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(t('today'),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                  color: AppColors.primaryDark)),
+        ),
+      ),
+    );
+  }
+
+  /// Mockup suggested-prompts section above the input bar, with a
+  /// working Refresh that cycles the prompt sets.
+  Widget _promptsSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(t('suggestedPrompts'),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700, fontSize: 13)),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => setState(() => _promptSet =
+                    nextPromptSetIndex(_promptSet, _promptSets.length)),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.refresh_rounded,
+                          size: 15, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(t('refreshPrompts'),
+                          style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SuggestedPromptsRow(
+            prompts: _promptSets[_promptSet],
+            onSuggestedPrompt: (prompt) {
+              _input.text = prompt;
+              _input.selection = TextSelection.fromPosition(
+                  TextPosition(offset: _input.text.length));
+              _focus.requestFocus();
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -207,61 +309,52 @@ class _AiChatScreenState extends State<AiChatScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 76,
-              height: 76,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: const LinearGradient(colors: [
-                  AppColors.primary,
-                  AppColors.primaryDark
-                ]),
-                boxShadow: [
-                  BoxShadow(
-                      color:
-                          AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 20)
-                ],
-              ),
-              child: const Icon(Icons.auto_awesome_rounded,
-                  color: Colors.white, size: 36),
+            // Mockup greeting bubble (assistant side).
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _aiAvatar(),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(4),
+                        topRight: Radius.circular(18),
+                        bottomLeft: Radius.circular(18),
+                        bottomRight: Radius.circular(18),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                            color: AppColors.primary
+                                .withValues(alpha: 0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: Text(t('chatWelcome'),
+                        style: const TextStyle(
+                            fontSize: 14.5, height: 1.6)),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text(t('aiChat'),
-                style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 20)),
-            const SizedBox(height: 6),
+            const SizedBox(height: 20),
             Text(t('aiDisclaimer'),
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 13)),
             const SizedBox(height: 20),
-            // v2.10: suggested prompts as a real row whose chips call
-            // back with the prompt (Grok's version declared the callback
-            // but never rendered the chips).
-            SuggestedPromptsRow(
-              prompts: [
-                (label: t('explainThisCode'),
-                    prompt: '${t('explainThisCode')}:\n'),
-                (label: t('helpMeDebug'),
-                    prompt: '${t('helpMeDebug')}:\n'),
-                (label: t('practicalExample'),
-                    prompt: '${t('practicalExample')}: '),
-              ],
-              onSuggestedPrompt: (prompt) {
-                _input.text = prompt;
-                _input.selection = TextSelection.fromPosition(
-                    TextPosition(offset: _input.text.length));
-                _focus.requestFocus();
-              },
-            ),
+            _promptsSection(),
           ],
         ),
       ),
     );
   }
-
 
   Widget _thinkingBubble() {
     return Align(

@@ -9,7 +9,7 @@ import '../core/notify.dart';
 import '../core/store.dart';
 import '../core/theme.dart';
 import '../core/widgets.dart';
-import '../core/motion.dart';
+import '../core/grok_glass.dart';
 import '../core/widget_service.dart';
 import 'timetable_import_screen.dart';
 
@@ -23,6 +23,9 @@ class TimetableScreen extends StatefulWidget {
 
 class _TimetableScreenState extends State<TimetableScreen> {
   int _weekday = DateTime.now().weekday; // 1=Mon..7=Sun
+  final Map<int, GlobalKey> _dayCardKeys = {
+    for (final w in [7, 1, 2, 3, 4, 5, 6]) w: GlobalKey(),
+  };
 
   /// Exports the whole weekly timetable as formatted text and shares it.
   Future<void> _shareTimetable() async {
@@ -79,6 +82,13 @@ class _TimetableScreenState extends State<TimetableScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // v2.11: mockup weekly layout — one card per day, Sunday first,
+    // with the real timetable data (the old single-day strip is gone,
+    // but share/import/add/edit/delete/calendar/attendance all stay).
+    final week = weekDaysSundayFirst(DateTime.now());
+    final sunday = week.first.date;
+    final saturday = week.last.date;
+    final todayWd = DateTime.now().weekday;
     return Scaffold(
       appBar: AppBar(
         title: Text(t('timetable')),
@@ -100,79 +110,24 @@ class _TimetableScreenState extends State<TimetableScreen> {
         ],
       ),
       body: AuroraBackground(
-        child: Column(
-          children: [
-            _dayStrip(),
-            Expanded(
-              child: ValueListenableBuilder(
-                valueListenable: DB.timetable.listenable(),
-                builder: (_, __, ___) => ValueListenableBuilder(
-                  valueListenable: DB.subjects.listenable(),
-                  builder: (_, __, ___) {
-                    final list = DB.timetable.values
-                        .where((e) => e.weekday == _weekday)
-                        .toList()
-                      ..sort((a, b) => a.startMin.compareTo(b.startMin));
-                    if (list.isEmpty) {
-                      return EmptyState(
-                        icon: Icons.calendar_month_rounded,
-                        message: t('empty'),
-                        actionLabel: t('addEntry'),
-                        onAction: () => _editEntry(null),
-                      );
-                    }
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      itemCount: list.length,
-                      itemBuilder: (_, i) {
-                        final e = list[i];
-                        // v2.9: swipe right = Edit, swipe left = Delete
-                        // (delete still gated by the Yes/No dialog, and
-                        // edit never dismisses the card).
-                        return FadeSlideIn(
-                          index: i,
-                          child: Dismissible(
-                            key: ValueKey(e.id),
-                            // Directional alignment so the revealed
-                            // icon sits on the side the card moved from
-                            // in both RTL (Arabic) and LTR (English).
-                            background: Container(
-                              alignment: AlignmentDirectional.centerStart,
-                              padding: const EdgeInsetsDirectional.only(
-                                  start: 20, bottom: 10),
-                              child: const Icon(Icons.edit_rounded,
-                                  color: AppColors.primary),
-                            ),
-                            secondaryBackground: Container(
-                              alignment: AlignmentDirectional.centerEnd,
-                              padding: const EdgeInsetsDirectional.only(
-                                  end: 20, bottom: 10),
-                              child: const Icon(Icons.delete_rounded,
-                                  color: AppColors.error),
-                            ),
-                            confirmDismiss: (dir) async {
-                              if (dir == DismissDirection.startToEnd) {
-                                _editEntry(e);
-                                return false;
-                              }
-                              if (await confirmDelete(context)) {
-                                await Notify.cancel('class_${e.id}');
-                                await DB.timetable.delete(e.id);
-                                WidgetService.update();
-                                return true;
-                              }
-                              return false;
-                            },
-                            child: _entryCard(e),
-                          ),
-                        );
-                      },
-                    );
-                  },
+        child: ValueListenableBuilder(
+          valueListenable: DB.timetable.listenable(),
+          builder: (_, __, ___) => ValueListenableBuilder(
+            valueListenable: DB.subjects.listenable(),
+            builder: (_, __, ___) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                child: Column(
+                  children: [
+                    _weekHeader(sunday, saturday, todayWd),
+                    const SizedBox(height: 12),
+                    for (final d in week)
+                      _dayCard(d.weekday, d.date, todayWd == d.weekday),
+                  ],
                 ),
-              ),
-            ),
-          ],
+              );
+            },
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -183,123 +138,253 @@ class _TimetableScreenState extends State<TimetableScreen> {
     );
   }
 
-  Widget _dayStrip() {
-    return SizedBox(
-      height: 64,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        itemCount: 7,
-        itemBuilder: (_, i) {
-          final wd = i + 1;
-          final sel = wd == _weekday;
-          return GestureDetector(
-            onTap: () => setState(() => _weekday = wd),
-            child: Container(
-              width: 76,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: sel
-                    ? const LinearGradient(
-                        colors: [AppColors.primary, AppColors.violet])
-                    : null,
-                color: sel
-                    ? null
-                    : Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-              ),
-              child: Center(
-                child: Text(
-                  t(_dayKeys[i]),
-                  style: TextStyle(
-                    color: sel
-                        ? Colors.white
-                        : Theme.of(context).colorScheme.onSurface,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-              ),
+  Widget _weekHeader(DateTime sunday, DateTime saturday, int todayWd) {
+    return GlassCard(
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
             ),
-          );
-        },
+            child: const Icon(Icons.calendar_month_rounded,
+                color: AppColors.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(t('weekOf'),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                    '${sunday.day}/${sunday.month} – ${saturday.day}/${saturday.month}',
+                    style: TextStyle(
+                        color: AppColors.primaryDark,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13)),
+              ],
+            ),
+          ),
+          TextButton.icon(
+            icon: const Icon(Icons.today_rounded, size: 18),
+            label: Text(t('todayBtn')),
+            onPressed: () {
+              final ctx = _dayCardKeys[todayWd]?.currentContext;
+              if (ctx != null) {
+                Scrollable.ensureVisible(ctx,
+                    duration: const Duration(milliseconds: 300));
+              }
+            },
+          ),
+        ],
       ),
     );
   }
 
-  Widget _entryCard(TimetableEntry e) {
-    final c = Color(DB.subjectColor(e.subjectId));
-    final name = DB.subjectName(e.subjectId) ?? '—';
+  Widget _dayCard(int weekday, DateTime date, bool isToday) {
+    final list = DB.timetable.values
+        .where((e) => e.weekday == weekday)
+        .toList()
+      ..sort((a, b) => a.startMin.compareTo(b.startMin));
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      key: _dayCardKeys[weekday],
+      padding: const EdgeInsets.only(bottom: 14),
       child: GlassCard(
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 56,
-              padding: const EdgeInsets.symmetric(vertical: 6),
+              width: 72,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                  color: c.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12)),
+                color: (isToday ? AppColors.primary : AppColors.secondary)
+                    .withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Column(
                 children: [
-                  Text(formatClock(e.startMin),
+                  Text(t(_dayKeys[weekday - 1]),
+                      textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontWeight: FontWeight.w800, color: c, fontSize: 13)),
-                  Text(formatClock(e.endMin),
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: isToday
+                              ? AppColors.primary
+                              : Theme.of(context)
+                                  .colorScheme
+                                  .onSurface)),
+                  const SizedBox(height: 2),
+                  Text('${date.day}/${date.month}',
                       style: TextStyle(
-                          color: c.withValues(alpha: 0.7), fontSize: 11)),
+                          fontSize: 12,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant)),
+                  if (isToday) ...[
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.primary),
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16)),
-                  Text(
-                    '${e.kind == 0 ? t('lecture') : t('section')}${e.place.isNotEmpty ? ' • ${e.place}' : ''}${e.instructor.isNotEmpty ? ' • ${e.instructor}' : ''}',
+              child: list.isEmpty
+                  ? Row(
+                      children: [
+                        const Icon(Icons.wb_sunny_rounded,
+                            color: AppColors.warning, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(t('restDay'),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w700)),
+                              Text(t('restDayHint'),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        for (var i = 0; i < list.length; i++) ...[
+                          _weekClassRow(list[i], isToday),
+                          if (i != list.length - 1)
+                            const Divider(height: 16),
+                        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// One class row inside a day card. Swipe right = edit, swipe left =
+  /// delete (delete still gated by the Yes/No dialog); the popup menu
+  /// carries the same actions for users who don't swipe, plus calendar.
+  /// Only three controls sit in the row (attendance pair + menu) so
+  /// nothing crowds or overlaps on a narrow phone.
+  Widget _weekClassRow(TimetableEntry e, bool isToday) {
+    final c = Color(DB.subjectColor(e.subjectId));
+    final name = DB.subjectName(e.subjectId) ?? '—';
+    return Dismissible(
+      key: ValueKey(e.id),
+      background: Container(
+        alignment: AlignmentDirectional.centerStart,
+        padding: const EdgeInsetsDirectional.only(start: 12),
+        child: const Icon(Icons.edit_rounded, color: AppColors.primary),
+      ),
+      secondaryBackground: Container(
+        alignment: AlignmentDirectional.centerEnd,
+        padding: const EdgeInsetsDirectional.only(end: 12),
+        child: const Icon(Icons.delete_rounded, color: AppColors.error),
+      ),
+      confirmDismiss: (dir) async {
+        if (dir == DismissDirection.startToEnd) {
+          _editEntry(e);
+          return false;
+        }
+        if (await confirmDelete(context)) {
+          await Notify.cancel('class_${e.id}');
+          await DB.timetable.delete(e.id);
+          WidgetService.update();
+          return true;
+        }
+        return false;
+      },
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            decoration: BoxDecoration(
+                color: c.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10)),
+            child: Column(
+              children: [
+                Text(formatClock(e.startMin),
                     style: TextStyle(
-                        color:
-                            Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontSize: 12),
-                  ),
+                        fontWeight: FontWeight.w800, color: c, fontSize: 12)),
+                Text(formatClock(e.endMin),
+                    style: TextStyle(
+                        color: c.withValues(alpha: 0.7), fontSize: 11)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(
+                  '${e.kind == 0 ? t('lecture') : t('section')}${e.instructor.isNotEmpty ? ' • ${e.instructor}' : ''}',
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurfaceVariant,
+                      fontSize: 12),
+                ),
+                if (e.place.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  RoomChip(room: e.place),
                 ],
-              ),
+              ],
             ),
-            // v2.10: present/absent for TODAY's classes only, using the
-            // existing AttendanceRecord store (same pattern as the
-            // attendance screen: one record per entry per day).
-            if (_weekday == DateTime.now().weekday) ...[
-              _attendanceButton(e, 1),
-              _attendanceButton(e, 0),
-            ],
-            IconButton(
-              icon: const Icon(Icons.event_rounded),
-              tooltip: t('addToCalendar'),
-              onPressed: () => _addEntryToCalendar(e),
-            ),
-            IconButton(
-                icon: const Icon(Icons.edit_rounded),
-                onPressed: () => _editEntry(e)),
-            IconButton(
-              icon: const Icon(Icons.delete_rounded, color: AppColors.error),
-              onPressed: () async {
+          ),
+          if (isToday) ...[
+            _attendanceButton(e, 1),
+            _attendanceButton(e, 0),
+          ],
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert_rounded),
+            onSelected: (v) async {
+              if (v == 'edit') {
+                _editEntry(e);
+              } else if (v == 'calendar') {
+                _addEntryToCalendar(e);
+              } else if (v == 'delete') {
                 if (await confirmDelete(context)) {
                   await Notify.cancel('class_${e.id}');
                   await DB.timetable.delete(e.id);
                   WidgetService.update();
                 }
-              },
-            ),
-          ],
-        ),
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                  value: 'edit', child: Text(t('editEntry'))),
+              PopupMenuItem(
+                  value: 'calendar', child: Text(t('addToCalendar'))),
+              PopupMenuItem(
+                  value: 'delete',
+                  child: Text(t('delete'),
+                      style: const TextStyle(color: AppColors.error))),
+            ],
+          ),
+        ],
       ),
     );
   }

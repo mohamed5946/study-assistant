@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'motion.dart';
 import 'store.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 /// v2.10: Grok Glass widgets, adapted (not pasted) into the app's own
@@ -148,11 +149,14 @@ class RoomChip extends StatelessWidget {
           const Icon(Icons.location_on_rounded,
               size: 13, color: AppColors.primary),
           const SizedBox(width: 3),
-          Text(room,
-              style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary)),
+          Flexible(
+            child: Text(room,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary)),
+          ),
         ],
       ),
     );
@@ -331,5 +335,227 @@ int pomodoroPhaseMinutes(
       return breakMin;
     case PomodoroPhase.longBreak:
       return longBreakMin;
+  }
+}
+
+/// v2.11: mockup timeline row — time column, dotted spine, title,
+/// subtitle, and a room chip. Pure Column/Row layout (no Stack), so
+/// nothing can sit on top of anything else.
+class TimelineClassRow extends StatelessWidget {
+  final String startLabel;
+  final String endLabel;
+  final String title;
+  final String subtitle;
+  final String? room;
+  final Color color;
+  final VoidCallback? onTap;
+  const TimelineClassRow({
+    super.key,
+    required this.startLabel,
+    required this.endLabel,
+    required this.title,
+    required this.subtitle,
+    this.room,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final row = IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 62,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(startLabel,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 13)),
+                const SizedBox(height: 2),
+                Text(endLabel,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                margin: const EdgeInsets.only(top: 4),
+                decoration:
+                    BoxDecoration(shape: BoxShape.circle, color: color),
+              ),
+              Expanded(
+                child: Container(
+                    width: 2,
+                    color: color.withValues(alpha: 0.3)),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 2),
+                Text(subtitle,
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant)),
+                if (room != null && room!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [Flexible(child: RoomChip(room: room!))],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: onTap == null
+          ? row
+          : InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: onTap,
+              child: row,
+            ),
+    );
+  }
+}
+
+/// Sunday of the week containing [d] (Sunday-first weeks, mockup order).
+DateTime weekSunday(DateTime d) {
+  final day = DateTime(d.year, d.month, d.day);
+  return day.subtract(Duration(days: d.weekday % 7));
+}
+
+/// The week's days, Sunday first: (weekday 7,1,2,3,4,5,6) with dates.
+List<({int weekday, DateTime date})> weekDaysSundayFirst(DateTime d) {
+  final sunday = weekSunday(d);
+  const order = [7, 1, 2, 3, 4, 5, 6];
+  return [
+    for (var i = 0; i < 7; i++)
+      (weekday: order[i], date: sunday.add(Duration(days: i))),
+  ];
+}
+
+/// Cycle through suggested-prompt sets (mockup Refresh button).
+int nextPromptSetIndex(int current, int count) =>
+    count <= 0 ? 0 : (current + 1) % count;
+
+/// Mockup duration chip: label + minutes, gradient when selected.
+class DurationChip extends StatelessWidget {
+  final String label;
+  final int minutes;
+  final bool selected;
+  final VoidCallback? onTap;
+  const DurationChip({
+    super.key,
+    required this.label,
+    required this.minutes,
+    required this.selected,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: selected
+              ? const LinearGradient(
+                  colors: [AppColors.primary, AppColors.primaryDark])
+              : null,
+          color: selected
+              ? null
+              : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.25)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('$minutes ${t('minutesShort')}',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: selected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface)),
+            const SizedBox(height: 2),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: selected
+                        ? Colors.white70
+                        : Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Mockup pomodoro ring: progress arc with centered content.
+class MockupRing extends StatelessWidget {
+  final double progress;
+  final double size;
+  final Color color;
+  final Widget child;
+  const MockupRing({
+    super.key,
+    required this.progress,
+    required this.size,
+    required this.color,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          SizedBox(
+            width: size,
+            height: size,
+            child: CircularProgressIndicator(
+              value: progress.clamp(0.0, 1.0),
+              strokeWidth: 16,
+              backgroundColor:
+                  AppColors.primary.withValues(alpha: 0.12),
+              color: color,
+            ),
+          ),
+          child,
+        ],
+      ),
+    );
   }
 }

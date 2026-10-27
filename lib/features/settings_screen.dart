@@ -66,11 +66,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     RadioListTile<String>(
                       value: 'ar',
-                      title: Text('العربية'),
+                      title: Text('🇪🇬 العربية'),
                     ),
                     RadioListTile<String>(
                       value: 'en',
-                      title: Text('English'),
+                      title: Text('🇺🇸 English'),
                     ),
                   ],
                 ),
@@ -79,23 +79,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
             SectionHeader(title: t('theme')),
             GlassCard(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: RadioGroup<String>(
-                groupValue: Settings.theme,
-                onChanged: (v) {
-                  if (v == null) return;
-                  Settings.theme = v;
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              child: SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(
+                      value: 'light',
+                      icon: const Icon(Icons.light_mode_rounded, size: 18),
+                      label: Text(t('lightTheme'))),
+                  ButtonSegment(
+                      value: 'dark',
+                      icon: const Icon(Icons.dark_mode_rounded, size: 18),
+                      label: Text(t('darkTheme'))),
+                  ButtonSegment(
+                      value: 'system',
+                      icon: const Icon(Icons.devices_rounded, size: 18),
+                      label: Text(t('systemTheme'))),
+                ],
+                selected: {Settings.theme},
+                onSelectionChanged: (v) {
+                  Settings.theme = v.first;
                   setState(() {});
                 },
-                child: Column(
-                  children: [
-                    for (final m in ['system', 'light', 'dark'])
-                      RadioListTile<String>(
-                        value: m,
-                        title: Text(t('${m}Theme')),
-                      ),
-                  ],
-                ),
               ),
             ),
             SectionHeader(title: t('reduceAnimations')),
@@ -154,47 +158,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             GlassCard(
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                          child: TextField(
-                              controller: _focusC,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                  labelText: t('focusMin')),
-                              onChanged: (v) {
-                                final n = int.tryParse(v);
-                                if (n != null && n > 0) {
-                                  Settings.focusMin = n;
-                                }
-                              })),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: TextField(
-                              controller: _breakC,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                  labelText: t('breakMin')),
-                              onChanged: (v) {
-                                final n = int.tryParse(v);
-                                if (n != null && n > 0) {
-                                  Settings.breakMin = n;
-                                }
-                              })),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  TextField(
-                      controller: _longBreakC,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          InputDecoration(labelText: t('longBreakMin')),
-                      onChanged: (v) {
-                        final n = int.tryParse(v);
-                        if (n != null && n > 0) {
-                          Settings.longBreakMin = n;
-                        }
-                      }),
+                  _prefRow(
+                      t('focusMin'), '${Settings.focusMin}', () {
+                    _editDuration(
+                        t('focusMin'),
+                        Settings.focusMin,
+                        (v) => Settings.focusMin = v);
+                  }),
+                  const Divider(height: 20),
+                  _prefRow(
+                      t('breakMin'), '${Settings.breakMin}', () {
+                    _editDuration(
+                        t('breakMin'),
+                        Settings.breakMin,
+                        (v) => Settings.breakMin = v);
+                  }),
+                  const Divider(height: 20),
+                  _prefRow(
+                      t('longBreakMin'), '${Settings.longBreakMin}', () {
+                    _editDuration(
+                        t('longBreakMin'),
+                        Settings.longBreakMin,
+                        (v) => Settings.longBreakMin = v);
+                  }),
                 ],
               ),
             ),
@@ -283,6 +269,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _prefRow(String label, String value, VoidCallback onTap) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: Text(label)),
+            Text(value,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryDark)),
+            const SizedBox(width: 4),
+            const Icon(Icons.chevron_left_rounded,
+                color: AppColors.primary),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editDuration(
+      String label, int current, ValueChanged<int> onSave) async {
+    final c = TextEditingController(text: '$current');
+    final ok = await showGlassDialog<bool>(
+      context,
+      title: label,
+      content: TextField(
+        controller: c,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(labelText: label),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(t('cancel'))),
+        FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(t('save'))),
+      ],
+    );
+    if (ok == true) {
+      final n = int.tryParse(c.text);
+      if (n != null && n > 0) {
+        onSave(n);
+        setState(() {});
+      }
+    }
   }
 
   Future<void> _showContact(BuildContext context) {
