@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../core/ai.dart';
 import '../core/book_loader.dart';
+import '../core/chat_aurora.dart';
 import '../core/code_text.dart';
 import '../core/glass_dialog.dart';
 import '../core/glass_sheet.dart';
@@ -33,6 +34,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _focus = FocusNode();
   bool _sending = false;
   bool _deepThink = false;
+  // v2.14: ids of messages already given their entry animation, so
+  // scrolling back never replays it.
+  final Set<String> _seenMessageIds = {};
   // v2.11: mockup suggested-prompt sets, cycled by the Refresh button.
   int _promptSet = 0;
 
@@ -123,7 +127,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ],
       ),
-      body: AuroraBackground(
+      body: AnimatedAuroraBackground(
         child: ValueListenableBuilder(
           valueListenable: DB.kv.listenable(keys: ['aiKey']),
           builder: (_, __, ___) {
@@ -233,7 +237,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   itemCount: msgs.length + (_sending ? 1 : 0),
                   itemBuilder: (_, i) {
                     if (i == msgs.length) return _thinkingBubble();
-                    return _bubble(msgs[i]);
+                    final animate = _seenMessageIds.add(msgs[i].id);
+                    return ChatMessageEntry(
+                      animate: animate,
+                      child: _bubble(msgs[i]),
+                    );
                   },
                 ),
         ),
@@ -396,7 +404,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ],
             ),
             child: const SizedBox(
-                width: 110, child: Center(child: BookLoader(size: 56))),
+                width: 80, child: Center(child: TypingDots())),
           ),
         ],
       ),

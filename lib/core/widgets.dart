@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'bin_delete.dart';
 import 'glass_dialog.dart';
 import 'l10n.dart';
 import 'theme.dart';
@@ -95,10 +96,10 @@ Future<bool> confirmDelete(BuildContext context) async {
       TextButton(
           onPressed: () => Navigator.pop(context, false),
           child: Text(t('no'))),
-      FilledButton(
-        style: FilledButton.styleFrom(backgroundColor: AppColors.error),
-        onPressed: () => Navigator.pop(context, true),
-        child: Text(t('yes')),
+      // v2.14: Yes swaps itself for the bin-eats-label animation and
+      // only then confirms, so the deletion runs after the animation.
+      AnimatedConfirmYesButton(
+        onConfirmed: () => Navigator.pop(context, true),
       ),
     ],
   );
